@@ -8,7 +8,7 @@ Salin `.env.example` menjadi `.env`, lalu isi:
 
 ```text
 OPENROUTER_API_KEY=isi-api-key-anda
-OPENROUTER_MODEL=meta-llama/llama-3.1-8b-instruct:free
+OPENROUTER_MODEL=nex-agi/nex-n2-pro:free
 ```
 
 Model dapat diganti selama kompatibel dengan endpoint chat completions

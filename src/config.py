@@ -4,11 +4,27 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from dotenv import load_dotenv
-
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-load_dotenv(PROJECT_ROOT / ".env")
+
+
+def load_project_env(path: Path) -> None:
+    try:
+        from dotenv import load_dotenv
+    except ModuleNotFoundError:
+        if not path.exists():
+            return
+        for line in path.read_text(encoding="utf-8").splitlines():
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#") or "=" not in stripped:
+                continue
+            key, value = stripped.split("=", 1)
+            os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+    else:
+        load_dotenv(path)
+
+
+load_project_env(PROJECT_ROOT / ".env")
 
 
 @dataclass(frozen=True)
@@ -24,7 +40,7 @@ class Settings:
     neo4j_database: str = os.getenv("NEO4J_DATABASE", "neo4j")
 
     openrouter_api_key: str = os.getenv("OPENROUTER_API_KEY", "")
-    openrouter_model: str = os.getenv("OPENROUTER_MODEL", "meta-llama/llama-3.1-8b-instruct:free")
+    openrouter_model: str = os.getenv("OPENROUTER_MODEL", "nex-agi/nex-n2-pro:free")
     openrouter_base_url: str = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
 
 

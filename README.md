@@ -97,6 +97,7 @@ alumni-graph-ai/
 |-- src/
 |   |-- __init__.py
 |   |-- cache_manager.py
+|   |-- chat_cli.py
 |   |-- config.py
 |   |-- cypher_guard.py
 |   |-- database.py
@@ -113,6 +114,7 @@ alumni-graph-ai/
 `-- docs/
     |-- ai_usage.md
     |-- architecture.md
+    |-- chat_usage.md
     |-- dataset_analysis.md
     |-- evaluation.md
     |-- graph_schema.md
@@ -124,6 +126,34 @@ alumni-graph-ai/
 ```powershell
 docker compose up -d
 python -m src.graph_builder --processed-dir data/processed
+```
+
+## Ngobrol dengan LLM
+
+Salin `.env.example` menjadi `.env`, lalu isi `OPENROUTER_API_KEY`.
+
+```powershell
+copy .env.example .env
+```
+
+Chat LLM biasa:
+
+```powershell
+python -m src.chat_cli --mode llm
+```
+
+Chat dengan data alumni dari Neo4j atau Graph-RAG:
+
+```powershell
+docker compose up -d
+python -m src.graph_builder --processed-dir data/processed
+python -m src.chat_cli --mode rag
+```
+
+Mode untuk melihat query Cypher dan data retrieval saja:
+
+```powershell
+python -m src.chat_cli --mode cypher
 ```
 
 ## Urutan Notebook

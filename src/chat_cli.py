@@ -79,7 +79,14 @@ def run_rag_chat(show_rows: bool = True) -> None:
 
             if show_rows:
                 print("\nData retrieval:")
-                print(json.dumps(result["rows"], ensure_ascii=False, indent=2))
+                if result.get("queries"):
+                    rows_payload = [
+                        {"query": item["query"], "rows": item["rows"]}
+                        for item in result["queries"]
+                    ]
+                    print(json.dumps(rows_payload, ensure_ascii=False, indent=2))
+                else:
+                    print("[]")
 
             print("\nJawaban:")
             print(result["answer"])
@@ -93,6 +100,7 @@ def run_cypher_chat(show_rows: bool = True) -> None:
 
     db = Neo4jConnection()
     agent = TextToCypher(db=db)
+    history: list[dict[str, str]] = []
     _print_header("cypher")
 
     try:
@@ -106,17 +114,30 @@ def run_cypher_chat(show_rows: bool = True) -> None:
                 continue
 
             try:
-                result: dict[str, Any] = agent.ask(question)
+                result: dict[str, Any] = agent.ask(question, history=history)
+                history.append({"role": "user", "content": question})
+                if result.get("queries"):
+                    query_text = "\n---\n".join(item["query"] for item in result["queries"])
+                    history.append({"role": "assistant", "content": query_text})
+                else:
+                    history.append({"role": "assistant", "content": ""})
             except Exception as exc:
                 print(f"\nError Text-to-Cypher: {exc}")
                 continue
 
             print("\nCypher:")
-            print(result["cypher"])
+            if result.get("queries"):
+                for item in result["queries"]:
+                    print(item["query"])
+            else:
+                print("<Tidak ada query>")
 
             if show_rows:
                 print("\nData retrieval:")
-                print(json.dumps(result["rows"], ensure_ascii=False, indent=2))
+                if result.get("queries"):
+                    print(json.dumps(result["queries"], ensure_ascii=False, indent=2))
+                else:
+                    print("[]")
     finally:
         db.close()
 

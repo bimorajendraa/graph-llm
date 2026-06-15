@@ -3,6 +3,7 @@ jupyter>=1.0.0
 ipykernel>=6.29.0
 python-dotenv>=1.0.1
 neo4j>=5.20.0
+rapidfuzz>=2.0.0
 requests>=2.32.0
 numpy>=1.26.0
 scikit-learn>=1.5.0

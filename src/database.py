@@ -7,6 +7,19 @@ from neo4j import GraphDatabase
 
 from src.config import settings
 
+_driver = None
+
+
+def get_driver():
+    """Get or create the global Neo4j driver."""
+    global _driver
+    if _driver is None:
+        _driver = GraphDatabase.driver(
+            settings.neo4j_uri,
+            auth=(settings.neo4j_username, settings.neo4j_password),
+        )
+    return _driver
+
 
 class Neo4jConnection:
     def __init__(

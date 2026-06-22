@@ -59,16 +59,14 @@ def validate_read_only_cypher(query: str) -> str:
     if " RETURN " not in upper and not upper.startswith("RETURN "):
         raise ValueError("Query harus memiliki RETURN clause.")
 
-    return_pos = upper.find(" RETURN ")
-    limit_pos = upper.find(" LIMIT ")
-    if limit_pos > 0 and limit_pos < return_pos:
-        raise ValueError("LIMIT harus datang SETELAH RETURN clause.")
+    return_pos = 0 if upper.startswith("RETURN ") else upper.rfind(" RETURN ")
+    limit_pos = upper.rfind(" LIMIT ")
 
     for keyword in WRITE_KEYWORDS:
         if re.search(rf"\b{re.escape(keyword)}\b", upper):
             raise ValueError(f"Query mengandung keyword yang tidak aman: {keyword}")
 
-    if " LIMIT " not in f" {upper} ":
+    if limit_pos < return_pos:
         normalized = f"{normalized.rstrip(';')} LIMIT 25"
 
     return normalized.rstrip(";")

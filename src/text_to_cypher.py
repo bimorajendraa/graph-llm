@@ -27,6 +27,13 @@ GENERIC_SIMILARITY_PATTERN = re.compile(
     r".*\b(mirip|serupa|similar|similarity)\b",
     re.IGNORECASE,
 )
+INFLUENTIAL_SIMILARITY_PATTERN = re.compile(
+    r"\b(pengaruh besar|berpengaruh|paling berpengaruh)\b"
+    r".*\b(mirip|serupa|similar|similarity)\b|"
+    r"\b(mirip|serupa|similar|similarity)\b"
+    r".*\b(pengaruh besar|berpengaruh|paling berpengaruh)\b",
+    re.IGNORECASE,
+)
 
 GENERIC_SIMILARITY_QUERY = """
 MATCH (a:Alumni)-[r:MIRIP_DENGAN]-(other:Alumni)
@@ -49,6 +56,20 @@ RETURN a.name AS alumni_1,
        collect(DISTINCT e2.name) AS employer_alumni_2,
        collect(DISTINCT p1.name) AS posisi_alumni_1,
        collect(DISTINCT p2.name) AS posisi_alumni_2
+ORDER BY similarity_score DESC
+LIMIT 25
+"""
+INFLUENTIAL_SIMILARITY_QUERY = """
+MATCH (a:Alumni)-[rel]-()
+WITH a, count(rel) AS degree
+ORDER BY degree DESC
+LIMIT 1
+MATCH (a)-[r:MIRIP_DENGAN]-(other:Alumni)
+RETURN a.name AS alumni_berpengaruh,
+       degree,
+       a.clusterId AS cluster,
+       other.name AS alumni_paling_mirip,
+       r.score AS similarity_score
 ORDER BY similarity_score DESC
 LIMIT 25
 """
@@ -201,6 +222,8 @@ class TextToCypher:
         return "History:\n" + "\n".join(lines) + "\n\n"
 
     def _deterministic_queries(self, question: str) -> list[str]:
+        if INFLUENTIAL_SIMILARITY_PATTERN.search(question):
+            return split_cypher_queries(INFLUENTIAL_SIMILARITY_QUERY)
         if GENERIC_SIMILARITY_PATTERN.search(question):
             return split_cypher_queries(GENERIC_SIMILARITY_QUERY)
         return []

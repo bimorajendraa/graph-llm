@@ -39,6 +39,8 @@ class Neo4jConnection:
         self.driver.close()
 
     def run_query(self, query: str, parameters: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        import logging
+        logging.getLogger("neo4j.notifications").setLevel(logging.ERROR)
         with self.driver.session(database=self.database) as session:
             result = session.run(query, parameters or {})
             return [record.data() for record in result]

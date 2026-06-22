@@ -1,17 +1,21 @@
 from __future__ import annotations
 
+import json
+import os
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from src.logger import get_logger
 
 logger = get_logger(__name__)
 
+DEFAULT_HISTORY_PATH = Path(".cache") / "conversation_history.json"
+
 
 @dataclass
 class ConversationTurn:
-    """Represents a single turn in the conversation."""
     user_question: str
     rewritten_question: str | None = None
     queries: list[dict[str, Any]] = field(default_factory=list)
@@ -27,13 +31,52 @@ class ConversationTurn:
             "timestamp": self.timestamp.isoformat(),
         }
 
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ConversationTurn":
+        ts = data.get("timestamp")
+        return cls(
+            user_question=data.get("user_question", ""),
+            rewritten_question=data.get("rewritten_question"),
+            queries=data.get("queries", []),
+            answer=data.get("answer"),
+            timestamp=datetime.fromisoformat(ts) if ts else datetime.now(),
+        )
+
 
 class ConversationManager:
-    """Manages conversation state and history."""
-
-    def __init__(self, max_history: int = 20) -> None:
+    def __init__(
+        self,
+        max_history: int = 20,
+        persist_path: Path | str | None = DEFAULT_HISTORY_PATH,
+    ) -> None:
         self.turns: list[ConversationTurn] = []
         self.max_history = max_history
+        self.persist_path = Path(persist_path) if persist_path else None
+        self._load()
+
+    def _load(self) -> None:
+        if self.persist_path is None or not self.persist_path.exists():
+            return
+        try:
+            raw = json.loads(self.persist_path.read_text(encoding="utf-8"))
+            self.turns = [ConversationTurn.from_dict(t) for t in raw.get("turns", [])]
+            if self.turns:
+                logger.debug("Loaded %d turns from %s", len(self.turns), self.persist_path)
+        except Exception as exc:
+            logger.warning("Gagal memuat history percakapan: %s — mulai sesi baru.", exc)
+            self.turns = []
+
+    def _save(self) -> None:
+        if self.persist_path is None:
+            return
+        try:
+            self.persist_path.parent.mkdir(parents=True, exist_ok=True)
+            data = {"turns": [t.to_dict() for t in self.turns]}
+            self.persist_path.write_text(
+                json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
+        except Exception as exc:
+            logger.warning("Gagal menyimpan history percakapan: %s", exc)
 
     def add_turn(
         self,
@@ -42,7 +85,6 @@ class ConversationManager:
         answer: str | None = None,
         rewritten_question: str | None = None,
     ) -> None:
-        """Add a new turn to the conversation."""
         turn = ConversationTurn(
             user_question=user_question,
             rewritten_question=rewritten_question,
@@ -50,13 +92,12 @@ class ConversationManager:
             answer=answer,
         )
         self.turns.append(turn)
-        logger.debug(f"Added turn: {user_question}")
-
+        logger.debug("Added turn: %s", user_question)
         if len(self.turns) > self.max_history:
             self.turns.pop(0)
+        self._save()
 
     def get_history(self) -> list[dict[str, str]]:
-        """Get conversation history in chat format."""
         history = []
         for turn in self.turns:
             history.append({"role": "user", "content": turn.user_question})
@@ -65,11 +106,9 @@ class ConversationManager:
         return history
 
     def get_last_n_turns(self, n: int = 5) -> list[ConversationTurn]:
-        """Get the last n turns."""
         return self.turns[-n:] if self.turns else []
 
     def get_context_for_rewrite(self) -> list[dict[str, str]]:
-        """Get conversation context for query rewriting."""
         context = []
         for turn in self.turns[-3:]:
             context.append({"role": "user", "content": turn.user_question})
@@ -77,13 +116,16 @@ class ConversationManager:
                 context.append({"role": "assistant", "content": turn.answer[:200]})
         return context
 
-    def clear(self) -> None:
-        """Clear conversation history."""
+    def clear(self, delete_file: bool = True) -> None:
         self.turns = []
+        if delete_file and self.persist_path and self.persist_path.exists():
+            try:
+                self.persist_path.unlink()
+            except Exception as exc:
+                logger.warning("Gagal menghapus file history: %s", exc)
         logger.debug("Conversation history cleared")
 
     def summary(self) -> dict[str, Any]:
-        """Get a summary of the conversation."""
         return {
             "total_turns": len(self.turns),
             "turns": [turn.to_dict() for turn in self.turns],

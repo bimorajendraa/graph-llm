@@ -1,6 +1,6 @@
 # Analisis Dataset AlumniGraph AI
 
-Dibuat: `2026-06-14 16:54:29`
+Dibuat: `2026-06-22 19:40:28`
 Folder dataset: `data\raw`
 
 ## Ringkasan

@@ -1,110 +1,204 @@
 # AlumniGraph AI
 
-AlumniGraph AI adalah project Graph-RAG berbasis Neo4j untuk melakukan eksplorasi, analisis, dan tanya-jawab terhadap data alumni. Project ini mengubah dataset CSV alumni menjadi bentuk graph, menyimpannya ke Neo4j, lalu menggunakan LLM untuk membantu proses Text-to-Cypher dan Graph-RAG.
+AlumniGraph AI adalah proyek berbasis **Python, Neo4j, Cypher, Graph Data Science, dan LLM** untuk membangun graph alumni dari dataset CSV, menjalankan analisis graph, melakukan graph machine learning, serta menyediakan fitur tanya jawab berbasis **Text-to-Cypher** dan **Graph-RAG**.
 
-Project ini dimulai dari **Tahap 0 - Dataset Inspection**. Tahap ini wajib selesai sebelum membuat koneksi Neo4j, query import, graph analytics, Text-to-Cypher, atau Graph-RAG.
-
----
-
-## Ringkasan Project
-
-Secara sederhana, project ini memiliki alur kerja berikut:
-
-```text
-Dataset CSV alumni
-        ↓
-Dataset inspection
-        ↓
-Preprocessing data
-        ↓
-Pembuatan node dan relationship CSV
-        ↓
-Import ke Neo4j
-        ↓
-Graph analytics / Graph machine learning
-        ↓
-Text-to-Cypher
-        ↓
-Graph-RAG
-        ↓
-Jawaban berbasis data alumni
-```
-
-Project ini bisa dijalankan melalui dua cara:
-
-1. **Notebook `.ipynb`** untuk eksplorasi, demo, pembelajaran, dan presentasi tahap demi tahap.
-2. **File Python `.py` di folder `src/`** untuk eksekusi yang lebih terstruktur melalui terminal.
-
-Notebook dan file `.py` bukan dua project terpisah. Notebook berfungsi sebagai alur interaktif, sedangkan file `.py` adalah kode inti yang menjalankan proses utama.
+Proyek ini dimulai dari **Tahap 0 - Dataset Inspection**. Tahap ini wajib selesai sebelum membuat koneksi Neo4j, query import, graph analytics, Text-to-Cypher, atau Graph-RAG agar struktur data yang digunakan benar-benar sesuai dengan kolom aktual pada dataset.
 
 ---
 
-## Tujuan Tahap 0
+## Tujuan Proyek
 
-- Mengambil dataset dari repository sumber.
-- Menyimpan file CSV mentah ke `data/raw`.
-- Membaca seluruh CSV tanpa mengasumsikan nama kolom.
-- Menampilkan nama file, jumlah baris, jumlah kolom, daftar kolom, missing value, duplikasi, dan contoh 5 baris pertama.
-- Membuat laporan inspeksi di `docs/dataset_analysis.md`.
-- Memberi rekomendasi awal schema graph berdasarkan kolom yang benar-benar ditemukan.
+Tujuan utama proyek ini adalah membuat pipeline end-to-end untuk:
+
+1. Mengambil dan menyimpan dataset alumni dalam format CSV.
+2. Melakukan inspeksi awal dataset tanpa mengasumsikan nama kolom secara sembarangan.
+3. Membersihkan dataset dan mengubahnya menjadi file node serta relationship.
+4. Mengimpor data hasil preprocessing ke Neo4j.
+5. Membentuk graph alumni dengan node seperti `Alumni`, `University`, `Occupation`, `Employer`, dan `Position`.
+6. Menjalankan analisis graph dan graph machine learning.
+7. Menggunakan LLM untuk:
+   - chat umum,
+   - mengubah pertanyaan bahasa natural menjadi Cypher,
+   - mengambil data dari Neo4j,
+   - menyusun jawaban akhir berbasis Graph-RAG.
 
 ---
 
 ## Fitur Utama
 
-- Inspeksi dataset CSV secara otomatis.
-- Preprocessing data alumni menjadi file node dan relationship.
-- Import graph ke Neo4j.
-- Penyusunan schema graph alumni.
-- Query Cypher untuk membaca hubungan antar node.
-- Graph analytics menggunakan Neo4j Graph Data Science.
-- Graph machine learning untuk clustering, embedding, dan similarity alumni.
-- Text-to-Cypher untuk mengubah pertanyaan bahasa Indonesia menjadi query Cypher.
-- Graph-RAG untuk menghasilkan jawaban berbasis hasil retrieval dari Neo4j.
-- CLI chat dengan tiga mode: `llm`, `cypher`, dan `rag`.
+### 1. Dataset Inspection
+
+Tahap ini dilakukan oleh `src/dataset_inspector.py`.
+
+Fungsinya:
+
+- Mengambil dataset dari repository sumber.
+- Menyimpan file CSV mentah ke `data/raw`.
+- Membaca seluruh CSV tanpa mengasumsikan nama kolom.
+- Menampilkan nama file, jumlah baris, jumlah kolom, daftar kolom, missing value, duplikasi, tipe data, dan contoh 5 baris pertama.
+- Membuat laporan inspeksi di `docs/dataset_analysis.md`.
+- Memberi rekomendasi awal schema graph berdasarkan kolom yang benar-benar ditemukan.
+
+### 2. Data Preprocessing
+
+Tahap ini dilakukan oleh `src/data_loader.py`.
+
+Fungsinya:
+
+- Mendeteksi dataset utama dari folder `data/raw`.
+- Membersihkan teks, spasi, nilai kosong, dan duplikasi.
+- Menggunakan kolom wajib:
+  - `univLabel`
+  - `alumniLabel`
+- Menggunakan kolom opsional jika tersedia:
+  - `occupationLabel`
+  - `employerLabel`
+  - `positionLabel`
+  - `wiki`
+- Membuat `alumniId` stabil berbasis hash dari nama alumni dan universitas.
+- Menghasilkan CSV node dan relationship di `data/processed`.
+
+Output preprocessing:
+
+```text
+data/processed/
+|-- clean_rows.csv
+|-- alumni.csv
+|-- universities.csv
+|-- occupations.csv
+|-- employers.csv
+|-- positions.csv
+|-- rel_alumni_university.csv
+|-- rel_alumni_occupation.csv
+|-- rel_alumni_employer.csv
+`-- rel_alumni_position.csv
+```
+
+### 3. Import Graph ke Neo4j
+
+Tahap ini dilakukan oleh `src/graph_builder.py`.
+
+Fungsinya:
+
+- Membuat constraint agar node penting tidak duplikat.
+- Mengimpor node dari CSV hasil preprocessing.
+- Mengimpor relationship antar-node.
+- Menggunakan `MERGE` agar import dapat dijalankan ulang tanpa membuat data ganda.
+- Mendukung ekstraksi entitas dari teks biodata alumni menggunakan LLM.
+
+### 4. Graph Analytics
+
+Tahap ini dilakukan oleh `src/graph_analytics.py`.
+
+Fungsinya:
+
+- Melihat alumni dengan koneksi terbanyak.
+- Menghitung jumlah alumni per universitas.
+- Menghitung jumlah alumni per pekerjaan.
+- Membuat projection graph untuk Neo4j Graph Data Science.
+
+### 5. Graph Machine Learning
+
+Tahap ini dilakukan oleh `src/graph_ml.py`.
+
+Graph ML di proyek ini bukan supervised learning untuk prediksi label seperti klasifikasi biasa. Graph ML digunakan untuk membaca pola koneksi antar-node di graph.
+
+Fungsinya:
+
+- **Louvain Community Detection** untuk menemukan komunitas atau cluster alumni berdasarkan koneksi graph. Hasilnya ditulis ke properti `clusterId`.
+- **FastRP Embedding** untuk membuat representasi vektor dari node graph. Hasilnya ditulis ke properti `embedding`.
+- **KNN Similarity** untuk mencari alumni yang mirip berdasarkan embedding graph. Hasilnya ditulis sebagai relationship `MIRIP_DENGAN` dengan properti `score`.
+
+Dengan kata lain, bagian ML dipakai agar sistem tidak hanya menyimpan data, tetapi juga bisa menemukan pola komunitas dan kemiripan antar-alumni.
+
+### Auto Graph ML pada mode RAG/Cypher
+
+Tahap ini dibantu oleh `src/graph_ml_orchestrator.py`.
+
+Saat user bertanya di mode `rag` atau `cypher` tentang kemiripan, rekomendasi,
+cluster, komunitas, similarity, atau alumni yang paling berpengaruh, sistem
+otomatis mengecek apakah hasil Graph ML sudah tersedia di Neo4j:
+
+- property `embedding` pada sebagian node `Alumni`,
+- property `clusterId` pada sebagian node `Alumni`,
+- relationship `MIRIP_DENGAN` antar alumni.
+
+Jika belum tersedia atau belum lengkap, Python orchestration akan menjalankan
+pipeline Graph ML:
+
+1. Membuat ulang GDS projection dengan `GraphAnalytics.create_gds_projection()`.
+2. Menjalankan Louvain untuk menulis `clusterId`.
+3. Menjalankan FastRP untuk menulis `embedding`.
+4. Menjalankan KNN untuk membuat relationship `MIRIP_DENGAN`.
+
+Query write seperti `CALL gds.knn.write`, `CALL gds.*.mutate`, dan
+`CALL gds.graph.drop` tidak boleh dibuat oleh LLM. Query seperti itu hanya
+dijalankan dari Python orchestrator. Text-to-Cypher tetap read-only.
+
+### 6. Text-to-Cypher
+
+Tahap ini dilakukan oleh `src/text_to_cypher.py` dan diamankan oleh `src/cypher_guard.py`.
+
+Fungsinya:
+
+- Mengubah pertanyaan bahasa Indonesia menjadi query Cypher.
+- Menyediakan schema graph ke LLM agar query yang dibuat sesuai struktur Neo4j.
+- Mengubah alias universitas seperti `ITB`, `ITS`, `UGM`, `UI`, `UNPAD`, dan lainnya menjadi nama lengkap.
+- Mendukung beberapa query sekaligus dengan pemisah `---`.
+- Memastikan query bersifat read-only.
+- Menolak query berbahaya seperti `CREATE`, `MERGE`, `DELETE`, `DROP`, `SET`, `REMOVE`, `LOAD`, dan sejenisnya.
+- Menambahkan `LIMIT 25` jika query belum memiliki limit.
+
+### 7. Graph-RAG
+
+Tahap ini dilakukan oleh `src/graph_rag.py` dengan bantuan:
+
+- `src/query_rewriter.py`
+- `src/conversation_manager.py`
+- `src/answer_formatter.py`
+- `src/text_to_cypher.py`
+- `src/llm_client.py`
+
+Fungsinya:
+
+- Menerima pertanyaan user.
+- Mengecek apakah pertanyaan adalah pertanyaan lanjutan atau follow-up.
+- Menulis ulang pertanyaan lanjutan menjadi pertanyaan lengkap menggunakan konteks percakapan.
+- Mengubah pertanyaan menjadi Cypher.
+- Menjalankan Cypher ke Neo4j.
+- Mengambil hasil retrieval dari graph.
+- Memberikan hasil retrieval ke LLM.
+- Menghasilkan jawaban akhir dalam bahasa Indonesia berdasarkan data graph.
 
 ---
 
-## Arsitektur Project
+## Teknologi yang Digunakan
 
-```mermaid
-flowchart TD
-    A[Dataset CSV di data/raw] --> B[Dataset Inspector]
-    B --> C[docs/dataset_analysis.md]
-    C --> D[Data Loader / Preprocessing]
-    D --> E[CSV Node & Relationship di data/processed]
-    E --> F[Graph Builder]
-    F --> G[Neo4j Graph Database]
+- Python
+- Jupyter Notebook
+- Pandas
+- NumPy
+- scikit-learn
+- Neo4j Python Driver
+- Neo4j 5 Community
+- Neo4j Graph Data Science Plugin
+- OpenRouter API
+- Docker Compose
+- Cypher Query Language
 
-    G --> H[Graph Analytics]
-    G --> I[Graph Machine Learning]
-    G --> J[Text-to-Cypher]
+Dependency utama ada di `requirements.txt`:
 
-    K[Pertanyaan User] --> L[Query Rewriter]
-    L --> J
-    J --> M[Cypher Guard]
-    M --> N[Eksekusi Query Read-only ke Neo4j]
-    N --> O[Data Retrieval]
-    O --> P[Graph-RAG Answer Generator]
-    P --> Q[Jawaban Bahasa Indonesia]
+```text
+pandas
+jupyter
+ipykernel
+python-dotenv
+neo4j
+rapidfuzz
+requests
+numpy
+scikit-learn
 ```
-
-### Komponen Arsitektur
-
-| Komponen | File / Folder | Fungsi |
-|---|---|---|
-| Dataset mentah | `data/raw/` | Tempat menyimpan CSV asli dari repository sumber. |
-| Dataset inspection | `src/dataset_inspector.py` | Mengecek struktur CSV, missing value, duplikasi, dan membuat laporan dataset. |
-| Preprocessing | `src/data_loader.py` | Membersihkan data dan membuat file node serta relationship. |
-| Graph import | `src/graph_builder.py` | Membuat constraint dan mengimpor data ke Neo4j. |
-| Koneksi database | `src/database.py` | Mengatur koneksi dan query ke Neo4j. |
-| Konfigurasi | `src/config.py` dan `.env` | Mengatur path, Neo4j, dan OpenRouter. |
-| Text-to-Cypher | `src/text_to_cypher.py` | Mengubah pertanyaan pengguna menjadi query Cypher. |
-| Cypher guard | `src/cypher_guard.py` | Memvalidasi query agar hanya read-only dan aman dijalankan. |
-| Graph-RAG | `src/graph_rag.py` | Menggabungkan query, retrieval Neo4j, dan LLM untuk jawaban akhir. |
-| Chat CLI | `src/chat_cli.py` | Menjalankan chat mode `llm`, `cypher`, atau `rag`. |
-| Notebook | `notebooks/` | Alur interaktif untuk menjalankan tahap project satu per satu. |
-| Dokumentasi | `docs/` | Menyimpan hasil analisis, schema, evaluasi, dan catatan penggunaan AI. |
 
 ---
 
@@ -117,6 +211,7 @@ graph-llm/
 |-- .env.example
 |-- .gitignore
 |-- docker-compose.yml
+|-- LICENSE
 |-- data/
 |   |-- raw/
 |   |-- processed/
@@ -146,6 +241,7 @@ graph-llm/
 |   |-- graph_analytics.py
 |   |-- graph_builder.py
 |   |-- graph_ml.py
+|   |-- graph_ml_orchestrator.py
 |   |-- graph_rag.py
 |   |-- llm_client.py
 |   |-- logger.py
@@ -161,32 +257,34 @@ graph-llm/
     `-- video_script.md
 ```
 
-Catatan: jika folder hasil clone bernama `alumni-graph-ai`, jalankan semua command dari folder tersebut. Nama folder root boleh berbeda, yang penting command dijalankan dari root project yang memiliki `README.md`, `requirements.txt`, `src/`, dan `docker-compose.yml`.
+Folder `.cache/` dapat terbentuk otomatis saat chat berjalan karena sistem menyimpan riwayat percakapan ke file `conversation_history.json`.
 
 ---
 
-## Prasyarat
+## Notebook dan Python Script
 
-Sebelum menjalankan project, pastikan sudah tersedia:
+Repository ini menyediakan dua bentuk eksekusi:
 
-- Python 3.10 atau lebih baru.
-- Git.
-- Docker dan Docker Compose.
-- Neo4j dijalankan melalui `docker-compose.yml`.
-- OpenRouter API Key jika ingin menjalankan fitur LLM, Text-to-Cypher, atau Graph-RAG.
-- Jupyter Notebook jika ingin menjalankan alur `.ipynb`.
+1. **Notebook (`.ipynb`)**
 
-Dependency utama project terdapat di `requirements.txt`, antara lain:
+   Notebook digunakan untuk menjalankan pipeline secara bertahap, eksploratif, dan mudah dipresentasikan. Notebook cocok untuk melihat output per tahap, menjelaskan proses, dan melakukan demonstrasi.
 
-- `pandas`
-- `jupyter`
-- `ipykernel`
-- `python-dotenv`
-- `neo4j`
-- `rapidfuzz`
-- `requests`
-- `numpy`
-- `scikit-learn`
+2. **Python module (`.py`)**
+
+   File Python di folder `src/` adalah versi terstruktur dan reusable dari pipeline. File ini bisa dijalankan langsung lewat terminal menggunakan perintah `python -m ...`.
+
+Jadi, notebook dan Python script bukan dua proyek yang terpisah. Notebook adalah alur demonstrasi tahap demi tahap, sedangkan file `.py` adalah implementasi modular yang menjalankan logika utama.
+
+Proyek ini bisa dijalankan tanpa membuka notebook karena tahapan utama sudah tersedia dalam bentuk Python module, terutama:
+
+```text
+src.dataset_inspector
+src.data_loader
+src.graph_builder
+src.chat_cli
+```
+
+Notebook tetap berguna untuk dokumentasi, eksperimen, dan presentasi hasil.
 
 ---
 
@@ -209,17 +307,20 @@ python -m venv .venv
 Untuk macOS atau Linux:
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 ```
 
 ### 3. Install dependency
 
 ```powershell
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### 4. Siapkan file environment
+### 4. Siapkan environment variable
+
+Salin `.env.example` menjadi `.env`.
 
 ```powershell
 copy .env.example .env
@@ -231,11 +332,7 @@ Untuk macOS atau Linux:
 cp .env.example .env
 ```
 
----
-
-## Konfigurasi
-
-File `.env.example` berisi konfigurasi awal seperti berikut:
+Isi atau sesuaikan nilai berikut di file `.env`:
 
 ```env
 NEO4J_URI=bolt://localhost:7687
@@ -246,47 +343,40 @@ OPENROUTER_API_KEY=
 OPENROUTER_MODEL=nex-agi/nex-n2-pro:free
 ```
 
-Isi file `.env` sesuai kebutuhan:
+`OPENROUTER_API_KEY` wajib diisi jika ingin menggunakan mode LLM, Text-to-Cypher, atau Graph-RAG.
 
-```env
-NEO4J_URI=bolt://localhost:7687
-NEO4J_USERNAME=neo4j
-NEO4J_PASSWORD=change-this-password
-NEO4J_DATABASE=neo4j
-OPENROUTER_API_KEY=isi_api_key_openrouter_di_sini
-OPENROUTER_MODEL=nex-agi/nex-n2-pro:free
+---
+
+## Menjalankan Neo4j
+
+Jalankan Neo4j menggunakan Docker Compose:
+
+```powershell
+docker compose up -d
 ```
 
-Keterangan:
-
-| Variabel | Fungsi |
-|---|---|
-| `NEO4J_URI` | Alamat koneksi Bolt Neo4j. |
-| `NEO4J_USERNAME` | Username Neo4j. |
-| `NEO4J_PASSWORD` | Password Neo4j. Harus sama dengan konfigurasi di `docker-compose.yml`. |
-| `NEO4J_DATABASE` | Nama database Neo4j. Default: `neo4j`. |
-| `OPENROUTER_API_KEY` | API key untuk menjalankan LLM. |
-| `OPENROUTER_MODEL` | Model LLM yang digunakan melalui OpenRouter. |
-
-Pada `docker-compose.yml`, Neo4j dijalankan dengan password default:
+Neo4j akan berjalan pada:
 
 ```text
-neo4j/change-this-password
+Neo4j Browser : http://localhost:7474
+Bolt URI      : bolt://localhost:7687
+Username      : neo4j
+Password      : change-this-password
 ```
 
-Artinya, nilai `NEO4J_PASSWORD` di `.env` harus tetap:
+Pastikan nilai `NEO4J_PASSWORD` di `.env` sama dengan password di `docker-compose.yml`.
 
-```env
-NEO4J_PASSWORD=change-this-password
+Untuk menghentikan container:
+
+```powershell
+docker compose down
 ```
-
-Jika password di `docker-compose.yml` diubah, maka `.env` juga harus ikut diubah.
 
 ---
 
 ## Cara Mengambil Dataset
 
-Jalankan dari folder root project.
+Jalankan dari folder proyek `graph-llm`.
 
 ```powershell
 git clone https://github.com/burhansa25/graph.git data/source_repo
@@ -304,11 +394,9 @@ find data/source_repo -name "*.csv" -exec cp {} data/raw/ \;
 
 ---
 
-## Cara Run Project dengan File `.py`
+## Menjalankan Pipeline Utama
 
-Project dapat dijalankan tanpa notebook. Jalur utama eksekusi berada di folder `src/`.
-
-### 1. Menjalankan inspeksi dataset
+### 1. Inspeksi Dataset
 
 ```powershell
 python -m src.dataset_inspector --data-dir data/raw --output docs/dataset_analysis.md
@@ -320,11 +408,15 @@ Output laporan akan tersimpan di:
 docs/dataset_analysis.md
 ```
 
-Tahap ini membaca seluruh CSV di `data/raw`, menampilkan struktur data, missing value, duplikasi, contoh data, dan rekomendasi awal schema graph.
+Notebook terkait:
+
+```text
+notebooks/00_dataset_inspection.ipynb
+```
 
 ---
 
-### 2. Menjalankan preprocessing
+### 2. Preprocessing Dataset
 
 Setelah laporan dataset selesai dibuat dan mapping kolom sudah sesuai, jalankan:
 
@@ -332,80 +424,63 @@ Setelah laporan dataset selesai dibuat dan mapping kolom sudah sesuai, jalankan:
 python -m src.data_loader --raw-dir data/raw --output-dir data/processed
 ```
 
-Script ini membuat CSV node dan relationship di `data/processed` berdasarkan kolom aktual:
+Script ini membuat CSV node dan relationship di `data/processed` berdasarkan kolom aktual.
 
-- `alumniLabel`
-- `univLabel`
-- `occupationLabel`
-- `employerLabel`
-- `positionLabel`
-- `wiki`
+Jika ingin menentukan file CSV tertentu:
 
-Output preprocessing meliputi:
+```powershell
+python -m src.data_loader --raw-dir data/raw --file-name normalized_alumni_dataset.csv --output-dir data/processed
+```
+
+Notebook terkait:
 
 ```text
-data/processed/clean_rows.csv
-data/processed/alumni.csv
-data/processed/universities.csv
-data/processed/occupations.csv
-data/processed/employers.csv
-data/processed/positions.csv
-data/processed/rel_alumni_university.csv
-data/processed/rel_alumni_occupation.csv
-data/processed/rel_alumni_employer.csv
-data/processed/rel_alumni_position.csv
+notebooks/02_data_preprocessing.ipynb
 ```
 
 ---
 
-### 3. Menjalankan Neo4j
+### 3. Import Graph ke Neo4j
+
+Pastikan Neo4j sudah berjalan:
 
 ```powershell
 docker compose up -d
 ```
 
-Neo4j Browser dapat dibuka melalui:
-
-```text
-http://localhost:7474
-```
-
-Koneksi Bolt untuk Python menggunakan:
-
-```text
-bolt://localhost:7687
-```
-
----
-
-### 4. Import graph ke Neo4j
+Lalu jalankan import:
 
 ```powershell
 python -m src.graph_builder --processed-dir data/processed
 ```
 
-Tahap ini akan:
+Notebook terkait:
 
-- Membuat constraint Neo4j.
-- Mengimpor node `Alumni`, `University`, `Occupation`, `Employer`, dan `Position`.
-- Mengimpor relationship antar node.
-- Menghitung jumlah node yang sudah masuk ke graph.
+```text
+notebooks/03_import_to_neo4j.ipynb
+```
 
 ---
 
-### 5. Menjalankan chat LLM biasa
+## Menjalankan Chat CLI
 
-Mode ini tidak menggunakan data Neo4j. Mode ini hanya menjalankan chat LLM biasa.
+File utama untuk chat adalah:
+
+```text
+src/chat_cli.py
+```
+
+### 1. Chat LLM biasa
+
+Mode ini hanya menggunakan LLM dan belum mengambil data dari Neo4j.
 
 ```powershell
 python -m src.chat_cli --mode llm
 ```
 
----
+### 2. Text-to-Cypher
 
-### 6. Menjalankan mode Text-to-Cypher
-
-Mode ini mengubah pertanyaan bahasa Indonesia menjadi query Cypher dan menampilkan hasil retrieval dari Neo4j.
+Mode ini mengubah pertanyaan menjadi Cypher, menjalankan query ke Neo4j, lalu menampilkan query dan data retrieval.
 
 ```powershell
 python -m src.chat_cli --mode cypher
@@ -415,63 +490,44 @@ Contoh pertanyaan:
 
 ```text
 Berapa banyak alumni dari ITB?
+Siapa saja alumni dari ITS?
+Berapa jumlah alumni dari UNPAD?
 ```
 
-Contoh query yang dapat dihasilkan:
+### 3. Graph-RAG
 
-```cypher
-MATCH (a:Alumni)-[:LULUSAN_DARI]->(u:University {normalizedName: toLower('Institut Teknologi Bandung')})
-RETURN count(a) AS jumlah LIMIT 25
+Mode ini menjalankan pipeline lengkap:
+
+```text
+Pertanyaan user -> Query rewrite -> Text-to-Cypher -> Neo4j retrieval -> LLM answer
 ```
 
----
-
-### 7. Menjalankan mode Graph-RAG
-
-Mode ini menjalankan pipeline lengkap: pertanyaan user, query rewriting, Text-to-Cypher, retrieval Neo4j, dan jawaban akhir dari LLM.
+Jalankan:
 
 ```powershell
 python -m src.chat_cli --mode rag
 ```
 
-Jika tidak ingin menampilkan data retrieval mentah, gunakan:
+Jika tidak ingin menampilkan data retrieval mentah:
 
 ```powershell
 python -m src.chat_cli --mode rag --hide-rows
 ```
 
----
-
-## Ringkasan File Eksekusi `.py`
-
-| File | Bisa dijalankan langsung? | Command | Fungsi |
-|---|---:|---|---|
-| `src/dataset_inspector.py` | Ya | `python -m src.dataset_inspector` | Inspeksi dataset dan membuat laporan Markdown. |
-| `src/data_loader.py` | Ya | `python -m src.data_loader` | Preprocessing dataset menjadi node dan relationship CSV. |
-| `src/graph_builder.py` | Ya | `python -m src.graph_builder` | Import data hasil preprocessing ke Neo4j. |
-| `src/chat_cli.py` | Ya | `python -m src.chat_cli --mode rag` | CLI chat untuk mode `llm`, `cypher`, dan `rag`. |
-| `src/graph_analytics.py` | Tidak langsung sebagai CLI | Diakses dari notebook atau import class | Query analitik graph seperti top connected alumni dan PageRank. |
-| `src/graph_ml.py` | Tidak langsung sebagai CLI | Diakses dari notebook atau import class | Louvain clustering, FastRP embedding, dan KNN similarity. |
-| `src/text_to_cypher.py` | Modul pendukung | Dipakai oleh `chat_cli.py` dan `graph_rag.py` | Mengubah pertanyaan menjadi Cypher. |
-| `src/graph_rag.py` | Modul pendukung | Dipakai oleh `chat_cli.py` | Menjalankan pipeline Graph-RAG. |
-
----
-
-## Cara Run dengan Notebook `.ipynb`
-
-Notebook tersedia di folder:
+Untuk keluar dari chat, ketik salah satu dari:
 
 ```text
-notebooks/
+exit
+quit
+keluar
+q
 ```
 
-Jalankan Jupyter:
+---
 
-```powershell
-jupyter notebook
-```
+## Urutan Notebook
 
-Lalu buka notebook sesuai urutan berikut:
+Jalankan notebook sesuai nomor:
 
 1. `00_dataset_inspection.ipynb`
 2. `01_database_connection.ipynb`
@@ -483,35 +539,45 @@ Lalu buka notebook sesuai urutan berikut:
 8. `07_text_to_cypher.ipynb`
 9. `08_graph_rag_demo.ipynb`
 
-Notebook digunakan untuk menjalankan proses secara interaktif. Cocok untuk debugging, eksplorasi, dan presentasi karena setiap tahap dapat dilihat output-nya langsung.
+Urutan ini mengikuti pipeline dari dataset mentah sampai demo Graph-RAG.
 
 ---
 
-## Apakah Harus Menggunakan `.ipynb`?
+## Arsitektur Sistem
 
-Tidak harus.
+```mermaid
+flowchart TD
+    A[Dataset CSV Mentah<br/>data/raw] --> B[Dataset Inspection<br/>src.dataset_inspector]
+    B --> C[Dataset Analysis Report<br/>docs/dataset_analysis.md]
+    C --> D[Preprocessing<br/>src.data_loader]
+    D --> E[Processed CSV<br/>data/processed]
+    E --> F[Graph Import<br/>src.graph_builder]
+    F --> G[(Neo4j Graph Database)]
 
-Project ini tetap bisa dijalankan tanpa `.ipynb` karena file utama di folder `src/` sudah dapat dieksekusi melalui terminal. Notebook hanya berperan sebagai versi interaktif dari pipeline.
+    G --> H[Graph Analytics<br/>src.graph_analytics]
+    G --> I[Graph ML<br/>src.graph_ml]
+    I --> J[Louvain Cluster<br/>FastRP Embedding<br/>KNN Similarity]
+    J --> G
 
-Perbandingannya:
+    K[User Question] --> L[Chat CLI<br/>src.chat_cli]
+    L --> M[Query Rewriter<br/>src.query_rewriter]
+    M --> N[Text-to-Cypher<br/>src.text_to_cypher]
+    N --> O[Cypher Guard<br/>src.cypher_guard]
+    O --> G
+    G --> P[Graph Retrieval Rows]
+    P --> Q[Graph-RAG<br/>src.graph_rag]
+    Q --> R[Final Answer in Indonesian]
 
-| Aspek | Notebook `.ipynb` | Python `.py` |
-|---|---|---|
-| Tujuan | Eksplorasi, demo, presentasi | Eksekusi utama dan reusable code |
-| Cara run | Jupyter Notebook | Terminal / command line |
-| Cocok untuk | Melihat output per tahap | Menjalankan pipeline secara rapi |
-| Wajib? | Tidak | Ya, sebagai logic inti project |
-| Contoh | `08_graph_rag_demo.ipynb` | `python -m src.chat_cli --mode rag` |
-
-Kesimpulannya, notebook dan file Python tidak berdiri sebagai dua sistem yang berbeda. File `.py` adalah logic utama, sedangkan notebook memanggil atau mendemonstrasikan logic tersebut secara bertahap.
+    S[OpenRouter LLM<br/>src.llm_client] --> M
+    S --> N
+    S --> Q
+```
 
 ---
 
 ## Schema Graph
 
-Schema graph utama yang digunakan:
-
-### Node
+Node utama:
 
 ```text
 Alumni(alumniId, name, normalizedName, description, source, clusterId, embedding)
@@ -521,7 +587,7 @@ Employer(name, normalizedName, source)
 Position(name, normalizedName, source)
 ```
 
-### Relationship
+Relationship utama:
 
 ```text
 (:Alumni)-[:LULUSAN_DARI]->(:University)
@@ -531,30 +597,53 @@ Position(name, normalizedName, source)
 (:Alumni)-[:MIRIP_DENGAN]->(:Alumni)
 ```
 
-Relationship `MIRIP_DENGAN` tidak berasal langsung dari CSV mentah. Relationship ini dibuat pada tahap graph machine learning, misalnya setelah embedding dan KNN similarity dijalankan.
+Relationship `MIRIP_DENGAN` dibuat pada tahap Graph ML, bukan dari CSV mentah.
 
 ---
 
-## Penjelasan Singkat Logika Cypher
+## Logika Cypher
 
-Cypher adalah bahasa query untuk Neo4j. Pada project ini, Cypher digunakan untuk membaca hubungan antar node alumni.
+### 1. Import Node
 
-Contoh sederhana:
+Saat import graph, node dibuat dengan pola `MERGE`.
+
+Contoh logika:
 
 ```cypher
-MATCH (a:Alumni)-[:LULUSAN_DARI]->(u:University)
-RETURN a.name, u.name
-LIMIT 25
+MERGE (a:Alumni {alumniId: row.alumniId})
+SET a.name = row.name,
+    a.normalizedName = row.normalizedName,
+    a.description = row.description,
+    a.source = row.source,
+    a.clusterId = row.clusterId,
+    a.embedding = row.embedding
 ```
 
-Artinya:
+`MERGE` digunakan agar node tidak dibuat ganda ketika proses import dijalankan ulang.
 
-- Cari node `Alumni`.
-- Ikuti relationship `LULUSAN_DARI` menuju node `University`.
-- Tampilkan nama alumni dan nama universitas.
-- Batasi hasil maksimal 25 baris.
+### 2. Import Relationship
 
-Contoh menghitung alumni dari satu universitas:
+Relationship dibuat dengan pola `MATCH` lalu `MERGE`.
+
+Contoh logika:
+
+```cypher
+MATCH (a:Alumni {alumniId: row.alumniId})
+MATCH (u:University {normalizedName: toLower(row.universityName)})
+MERGE (a)-[:LULUSAN_DARI]->(u)
+```
+
+Artinya sistem mencari alumni dan universitas yang sudah ada, lalu membuat hubungan `LULUSAN_DARI` jika belum ada.
+
+### 3. Text-to-Cypher
+
+Contoh pertanyaan:
+
+```text
+Berapa banyak alumni dari ITB?
+```
+
+Dapat diubah menjadi query seperti:
 
 ```cypher
 MATCH (a:Alumni)-[:LULUSAN_DARI]->(u:University {normalizedName: toLower('Institut Teknologi Bandung')})
@@ -562,201 +651,139 @@ RETURN count(a) AS jumlah
 LIMIT 25
 ```
 
-Artinya:
-
-- Cari alumni yang memiliki hubungan `LULUSAN_DARI` ke ITB.
-- Hitung jumlah alumni.
-- Tampilkan hasil sebagai kolom `jumlah`.
-
-Contoh mencari alumni berdasarkan pekerjaan:
-
-```cypher
-MATCH (a:Alumni)-[:BEKERJA_SEBAGAI]->(o:Occupation)
-WHERE toLower(o.name) CONTAINS toLower('politikus')
-RETURN a.name, o.name
-LIMIT 25
-```
-
-Pada project ini, query Cypher yang dihasilkan LLM divalidasi oleh `src/cypher_guard.py`. Tujuannya agar query yang dijalankan tetap aman dan bersifat read-only.
-
-Aturan keamanan utama:
-
-- Query harus berupa query baca seperti `MATCH`, `WITH`, `RETURN`, `CALL DB.`, atau `CALL GDS.`.
-- Query wajib memiliki `RETURN`.
-- Query dibatasi dengan `LIMIT 25` jika belum memiliki limit.
-- Query tidak boleh mengandung keyword tulis seperti `CREATE`, `MERGE`, `DELETE`, `SET`, `REMOVE`, `DROP`, `LOAD`, `CALL DBMS`, atau `CALL APOC`.
+Sistem juga memiliki guard agar query yang dijalankan hanya query baca. Query tulis seperti `CREATE`, `MERGE`, `DELETE`, `DROP`, dan `SET` ditolak pada mode Text-to-Cypher.
 
 ---
 
-## Penjelasan Singkat Pipeline AI
+## Pipeline AI
 
-Pipeline AI pada project ini digunakan untuk menghubungkan bahasa natural pengguna dengan data graph di Neo4j.
+Pipeline AI pada proyek ini terdiri dari beberapa bagian.
 
-### 1. User mengajukan pertanyaan
+### 1. LLM Client
 
-Contoh:
+`src/llm_client.py` menjadi penghubung antara aplikasi dan OpenRouter API.
+
+Digunakan oleh:
+
+- `src/chat_cli.py`
+- `src/text_to_cypher.py`
+- `src/graph_rag.py`
+- `src/query_rewriter.py`
+- `src/graph_builder.py` untuk ekstraksi biodata
+
+### 2. Text-to-Cypher Pipeline
 
 ```text
-Berapa banyak alumni dari ITB dan siapa saja namanya?
+User bertanya
+-> alias universitas dinormalisasi
+-> schema graph diberikan ke LLM
+-> LLM menghasilkan Cypher
+-> Cypher divalidasi oleh cypher_guard
+-> query dijalankan ke Neo4j
+-> rows dikembalikan ke user
 ```
 
-### 2. Query rewriter memproses pertanyaan
+### 3. Graph-RAG Pipeline
 
-Jika pertanyaan adalah follow-up, sistem mencoba memperjelas pertanyaan berdasarkan konteks percakapan sebelumnya.
+```text
+User bertanya
+-> pertanyaan follow-up ditulis ulang jika perlu
+-> Text-to-Cypher membuat query
+-> Neo4j mengembalikan data retrieval
+-> data retrieval diberikan ke LLM
+-> LLM membuat jawaban akhir berbasis data graph
+```
 
-Contoh:
+Graph-RAG membuat jawaban lebih terarah karena LLM tidak hanya mengandalkan pengetahuan umum, tetapi memakai hasil retrieval dari Neo4j.
+
+### 4. Conversation Memory
+
+`src/conversation_manager.py` menyimpan riwayat percakapan agar pertanyaan lanjutan seperti:
 
 ```text
 Kalau dari universitas lain?
+Lainnya?
+Bagaimana dengan UGM?
 ```
 
-Pertanyaan seperti ini membutuhkan konteks dari pertanyaan sebelumnya agar bisa dipahami.
-
-### 3. Text-to-Cypher membuat query
-
-`src/text_to_cypher.py` mengirim prompt berisi schema graph ke LLM. LLM diminta menghasilkan query Cypher saja, tanpa penjelasan tambahan.
-
-Contoh output:
-
-```cypher
-MATCH (a:Alumni)-[:LULUSAN_DARI]->(u:University {normalizedName: toLower('Institut Teknologi Bandung')})
-RETURN count(a) AS total LIMIT 25
----
-MATCH (a:Alumni)-[:LULUSAN_DARI]->(u:University {normalizedName: toLower('Institut Teknologi Bandung')})
-RETURN a.name LIMIT 25
-```
-
-Jika pertanyaan membutuhkan lebih dari satu query, query dipisahkan dengan tanda:
-
-```text
----
-```
-
-### 4. Cypher guard memvalidasi query
-
-Sebelum query dijalankan, `src/cypher_guard.py` memastikan query aman dan hanya membaca data.
-
-### 5. Query dijalankan ke Neo4j
-
-Query yang lolos validasi dikirim ke Neo4j melalui `src/database.py`. Hasilnya berupa baris data retrieval.
-
-### 6. Graph-RAG membuat jawaban akhir
-
-`src/graph_rag.py` mengirim pertanyaan user, query Cypher, dan hasil retrieval ke LLM. LLM kemudian menyusun jawaban akhir dalam bahasa Indonesia berdasarkan data yang ditemukan.
-
-### 7. Jawaban diberikan ke user
-
-Jawaban akhir harus berbasis data retrieval. Jika data tidak cukup, sistem harus menyampaikan keterbatasannya dan tidak mengarang informasi di luar data.
+dapat dipahami berdasarkan konteks pertanyaan sebelumnya.
 
 ---
 
-## Mode Chat CLI
+## Menjalankan Graph Analytics dan Graph ML
 
-`src/chat_cli.py` menyediakan tiga mode:
-
-### 1. Mode `llm`
-
-```powershell
-python -m src.chat_cli --mode llm
-```
-
-Mode ini hanya menjalankan chat LLM biasa. Tidak mengambil data dari Neo4j.
-
-### 2. Mode `cypher`
-
-```powershell
-python -m src.chat_cli --mode cypher
-```
-
-Mode ini menampilkan query Cypher dan data retrieval dari Neo4j. Cocok untuk debugging apakah pertanyaan sudah diterjemahkan menjadi query yang benar.
-
-### 3. Mode `rag`
-
-```powershell
-python -m src.chat_cli --mode rag
-```
-
-Mode ini menjalankan Graph-RAG penuh. Sistem membuat query, mengambil data dari Neo4j, lalu menyusun jawaban akhir.
-
-Untuk keluar dari chat, ketik salah satu:
-
-```text
-exit
-quit
-keluar
-q
-```
-
----
-
-## Graph Analytics dan Graph Machine Learning
-
-Project ini juga menyiapkan tahap analisis graph dan machine learning.
-
-### Graph Analytics
-
-File:
-
-```text
-src/graph_analytics.py
-```
-
-Contoh fungsi:
-
-- `top_connected_alumni()` untuk melihat alumni dengan koneksi terbanyak.
-- `university_alumni_counts()` untuk menghitung jumlah alumni per universitas.
-- `occupation_counts()` untuk menghitung jumlah alumni per pekerjaan.
-- `create_gds_projection()` untuk membuat proyeksi graph di Neo4j GDS.
-- `page_rank()` untuk menghitung ranking node alumni.
-
-### Graph Machine Learning
-
-File:
-
-```text
-src/graph_ml.py
-```
-
-Contoh fungsi:
-
-- `write_louvain_clusters()` untuk membuat cluster komunitas alumni.
-- `write_fast_rp_embeddings()` untuk membuat embedding node.
-- `write_knn_similarity()` untuk membuat relationship `MIRIP_DENGAN` antar alumni.
-- `similar_alumni()` untuk mencari alumni yang mirip berdasarkan hasil similarity.
-
-Tahap ini biasanya dijalankan melalui notebook:
+Graph analytics dan graph ML umumnya dijalankan melalui notebook:
 
 ```text
 notebooks/05_graph_analytics.ipynb
 notebooks/06_graph_machine_learning.ipynb
 ```
 
----
+Namun fungsi Python-nya juga tersedia di:
 
-## Urutan Pipeline yang Direkomendasikan
+```text
+src/graph_analytics.py
+src/graph_ml.py
+```
 
-Jalankan project dengan urutan berikut:
+Contoh menjalankan dari Python:
 
 ```powershell
-# 1. Aktifkan virtual environment
+python - <<'PY'
+from src.database import Neo4jConnection
+from src.graph_analytics import GraphAnalytics
+from src.graph_ml import GraphMachineLearning
+
+db = Neo4jConnection()
+db.verify()
+
+analytics = GraphAnalytics(db)
+print(analytics.university_alumni_counts(limit=10))
+print(analytics.create_gds_projection())
+
+ml = GraphMachineLearning(db)
+print(ml.write_louvain_clusters())
+print(ml.write_fast_rp_embeddings())
+print(ml.write_knn_similarity())
+
+db.close()
+PY
+```
+
+Catatan: pastikan Neo4j Graph Data Science plugin aktif. Jika memakai `docker-compose.yml` pada repository ini, plugin GDS sudah disiapkan melalui konfigurasi Neo4j.
+
+---
+
+## Alur Eksekusi Singkat
+
+Jalankan dari awal sampai Graph-RAG:
+
+```powershell
+# 1. Install dependency
+python -m venv .venv
 .\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
 
-# 2. Ambil dataset dan simpan CSV ke data/raw
-# Lihat bagian Cara Mengambil Dataset
+# 2. Siapkan env
+copy .env.example .env
 
-# 3. Inspeksi dataset
+# 3. Ambil dataset
+git clone https://github.com/burhansa25/graph.git data/source_repo
+Get-ChildItem .\data\source_repo -Recurse -Filter *.csv | Copy-Item -Destination .\data\raw
+
+# 4. Inspeksi dataset
 python -m src.dataset_inspector --data-dir data/raw --output docs/dataset_analysis.md
 
-# 4. Preprocessing dataset
+# 5. Preprocessing
 python -m src.data_loader --raw-dir data/raw --output-dir data/processed
 
-# 5. Jalankan Neo4j
+# 6. Jalankan Neo4j
 docker compose up -d
 
-# 6. Import graph ke Neo4j
+# 7. Import graph
 python -m src.graph_builder --processed-dir data/processed
 
-# 7. Jalankan Graph-RAG
+# 8. Jalankan Graph-RAG
 python -m src.chat_cli --mode rag
 ```
 
@@ -764,141 +791,80 @@ python -m src.chat_cli --mode rag
 
 ## Troubleshooting
 
-### 1. Neo4j tidak bisa terkoneksi
+### 1. Neo4j gagal terkoneksi
 
-Pastikan Docker sudah berjalan:
+Pastikan container berjalan:
 
 ```powershell
-docker compose ps
+docker ps
 ```
 
-Pastikan container Neo4j aktif, lalu cek browser:
+Pastikan `.env` sesuai dengan `docker-compose.yml`:
+
+```env
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USERNAME=neo4j
+NEO4J_PASSWORD=change-this-password
+NEO4J_DATABASE=neo4j
+```
+
+### 2. OpenRouter error
+
+Pastikan `OPENROUTER_API_KEY` sudah diisi di `.env`.
+
+```env
+OPENROUTER_API_KEY=isi_api_key_di_sini
+```
+
+### 3. Dataset tidak ditemukan
+
+Pastikan file CSV sudah ada di:
 
 ```text
-http://localhost:7474
+data/raw
 ```
 
-Pastikan `.env` sesuai dengan `docker-compose.yml`.
-
----
-
-### 2. Error password Neo4j
-
-Jika password di Docker berbeda dari `.env`, koneksi akan gagal. Samakan nilai berikut:
-
-```env
-NEO4J_PASSWORD=change-this-password
-```
-
-Dengan konfigurasi Docker:
-
-```yaml
-NEO4J_AUTH: neo4j/change-this-password
-```
-
----
-
-### 3. Error OpenRouter API Key
-
-Jika mode `llm`, `cypher`, atau `rag` gagal karena API key, isi:
-
-```env
-OPENROUTER_API_KEY=isi_api_key_openrouter_di_sini
-```
-
-Mode `dataset_inspector`, `data_loader`, dan `graph_builder` tidak membutuhkan OpenRouter API Key.
-
----
-
-### 4. Data retrieval kosong
-
-Kemungkinan penyebab:
-
-- Dataset belum masuk ke `data/raw`.
-- Preprocessing belum dijalankan.
-- Graph belum diimport ke Neo4j.
-- Pertanyaan user tidak sesuai dengan data yang ada.
-- Alias atau nama universitas tidak cocok dengan `normalizedName` di graph.
-
-Cek ulang urutan:
+Lalu jalankan ulang:
 
 ```powershell
 python -m src.dataset_inspector --data-dir data/raw --output docs/dataset_analysis.md
-python -m src.data_loader --raw-dir data/raw --output-dir data/processed
-docker compose up -d
-python -m src.graph_builder --processed-dir data/processed
-python -m src.chat_cli --mode cypher
 ```
+
+### 4. Kolom wajib tidak ditemukan
+
+Preprocessing membutuhkan minimal:
+
+```text
+univLabel
+alumniLabel
+```
+
+Jika nama kolom berbeda, cek hasil `docs/dataset_analysis.md` lalu sesuaikan mapping atau nama kolom.
+
+### 5. Graph-RAG mengembalikan data kosong
+
+Pastikan urutan berikut sudah dilakukan:
+
+1. Dataset sudah ada di `data/raw`.
+2. Inspeksi dataset sudah selesai.
+3. Preprocessing sudah menghasilkan file di `data/processed`.
+4. Neo4j sudah aktif.
+5. Import graph sudah berhasil.
+6. Pertanyaan sesuai dengan data yang tersedia di graph.
 
 ---
 
 ## Catatan Penting
 
-Jangan membuat properti graph seperti `alumniId`, `alumniLabel`, `univLabel`, `occupationLabel`, `employerLabel`, `positionLabel`, `description`, atau `source` sebelum kolom tersebut benar-benar ditemukan atau dipetakan dari dataset aktual.
+- Jangan membuat properti graph atau relationship baru sebelum kolom tersebut benar-benar ditemukan atau dipetakan dari dataset aktual.
+- Tahap inspeksi dataset tetap menjadi dasar sebelum membuat schema final.
+- Relationship `MIRIP_DENGAN` dibuat dari hasil Graph ML, bukan dari CSV mentah.
+- Mode Text-to-Cypher dan Graph-RAG membutuhkan OpenRouter API key.
+- Mode Cypher dan RAG membutuhkan Neo4j yang sudah berisi data hasil import.
+- Notebook digunakan untuk demonstrasi dan eksperimen, sedangkan file `.py` digunakan untuk eksekusi terstruktur.
 
-Tahap berikutnya baru boleh dibuat setelah `docs/dataset_analysis.md`
-menjelaskan struktur dataset dan mapping kolom ke schema target.
+---
 
-## Troubleshooting
+## Lisensi
 
-### Jawaban selalu kosong / "Data retrieval tidak ada hasil"
-
-Penyebab paling umum: database Neo4j kosong, biasanya setelah container
-atau volume Docker direset (mis. `docker compose down -v`, container baru,
-atau pertama kali setup). Tanda di log: warning seperti
-`label does not exist: Alumni` atau `relationship type does not exist:
-LULUSAN_DARI`.
-
-**Solusi**, jalankan ulang import setelah Neo4j aktif:
-
-```powershell
-docker compose up -d
-python -m src.graph_builder --processed-dir data/processed
-```
-
-Mode `--mode rag` sekarang otomatis memberi peringatan di awal sesi chat
-jika node `Alumni` masih nol, jadi masalah ini akan terlihat segera tanpa
-perlu menunggu jawaban kosong berulang kali.
-
-### `Error Graph-RAG: 'choices'`
-
-Ini terjadi saat OpenRouter mengembalikan HTTP 200 tapi body response
-berisi `{"error": {...}}` alih-alih `{"choices": [...]}`, biasanya saat
-provider upstream model gratis sedang overload. `src/llm_client.py` sudah
-menangani kondisi ini secara eksplisit dan akan menampilkan pesan error
-yang jelas, bukan crash. Coba ulangi pertanyaan, atau ganti
-`OPENROUTER_MODEL` di `.env`.
-
-### `Error: Query harus memiliki RETURN clause.`
-
-Terjadi saat LLM tidak mengembalikan Cypher yang valid, biasanya untuk
-pertanyaan chit-chat atau di luar scope data alumni (mis. "Apa yang bisa
-kita lakukan di sini?"). `GraphRAG.answer()` sekarang menangani kondisi
-ini secara otomatis dan memberi jawaban yang membantu daripada
-menampilkan error mentah.
-
-### `429 Rate limit exceeded: free-models-per-day`
-
-Kuota harian model gratis OpenRouter sudah habis (umumnya terbatas dan
-diprioritaskan lebih rendah dibanding request berbayar). Solusi:
-
-- Tunggu reset kuota harian, atau
-- Tambahkan kredit di akun OpenRouter dan ganti `OPENROUTER_MODEL` ke
-  model berbayar (lihat harga terkini di openrouter.ai/models), atau
-- Aktifkan cache LLM (`LLM_CACHE_ENABLED=true`, default aktif) supaya
-  pertanyaan yang identik tidak memanggil API lagi.
-
-### Respons terasa lambat
-
-Setiap pertanyaan di `--mode rag` bisa memicu hingga 3 pemanggilan LLM
-berurutan: rewrite pertanyaan follow-up, generate Cypher, dan generate
-jawaban akhir. Beberapa hal yang membantu:
-
-- Cache LLM aktif secara default (`src/cache_manager.py` via
-  `src/llm_client.py`) sehingga pertanyaan yang identik tidak memanggil
-  API lagi.
-- `src/query_rewriter.py` sekarang skip pemanggilan LLM untuk pertanyaan
-  yang terlihat berdiri sendiri (bukan follow-up vague seperti
-  "Lainnya?" atau "Kalau dari UGM?").
-- Model gratis (`:free`) cenderung lebih lambat karena prioritas
-  routing lebih rendah dibanding model berbayar.
+Proyek ini menggunakan lisensi MIT sesuai file `LICENSE`.

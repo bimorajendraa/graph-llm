@@ -22,6 +22,36 @@ UNIVERSITY_MENTION_PATTERN = re.compile(
     re.IGNORECASE,
 )
 FUZZY_MATCH_THRESHOLD = 85
+GENERIC_SIMILARITY_PATTERN = re.compile(
+    r"\b(mencari|cari|tampilkan|lihat|daftar|rekomendasi|rekomendasikan)\b"
+    r".*\b(mirip|serupa|similar|similarity)\b",
+    re.IGNORECASE,
+)
+
+GENERIC_SIMILARITY_QUERY = """
+MATCH (a:Alumni)-[r:MIRIP_DENGAN]-(other:Alumni)
+OPTIONAL MATCH (a)-[:LULUSAN_DARI]->(u1:University)
+OPTIONAL MATCH (other)-[:LULUSAN_DARI]->(u2:University)
+OPTIONAL MATCH (a)-[:BEKERJA_SEBAGAI]->(o1:Occupation)
+OPTIONAL MATCH (other)-[:BEKERJA_SEBAGAI]->(o2:Occupation)
+OPTIONAL MATCH (a)-[:BEKERJA_DI]->(e1:Employer)
+OPTIONAL MATCH (other)-[:BEKERJA_DI]->(e2:Employer)
+OPTIONAL MATCH (a)-[:MENJABAT_SEBAGAI]->(p1:Position)
+OPTIONAL MATCH (other)-[:MENJABAT_SEBAGAI]->(p2:Position)
+RETURN a.name AS alumni_1,
+       other.name AS alumni_2,
+       r.score AS similarity_score,
+       collect(DISTINCT u1.name) AS pendidikan_alumni_1,
+       collect(DISTINCT u2.name) AS pendidikan_alumni_2,
+       collect(DISTINCT o1.name) AS pekerjaan_alumni_1,
+       collect(DISTINCT o2.name) AS pekerjaan_alumni_2,
+       collect(DISTINCT e1.name) AS employer_alumni_1,
+       collect(DISTINCT e2.name) AS employer_alumni_2,
+       collect(DISTINCT p1.name) AS posisi_alumni_1,
+       collect(DISTINCT p2.name) AS posisi_alumni_2
+ORDER BY similarity_score DESC
+LIMIT 25
+"""
 
 SCHEMA_PROMPT = """
 Anda adalah asisten Text-to-Cypher untuk AlumniGraph AI yang sangat pintar dan detail.
@@ -53,7 +83,10 @@ INSTRUKSI WAJIB:
 4. Jika pertanyaan memerlukan multiple queries, pisahkan dengan "---" (tiga dash).
 5. Jawab HANYA dengan query Cypher, tanpa penjelasan atau markdown.
 6. Konversi alias universitas ke nama lengkap.
-7. JANGAN PERNAH mendeklarasikan nilai filter properti langsung di dalam kurung kurawal relasi seperti `-[r:MIRIP_DENGAN {score: s}]->`. Selalu deklarasikan filter skor di dalam klausa WHERE menggunakan variabel relasi seperti `WHERE r.score > 0`.
+7. Untuk pertanyaan "pengaruh besar", gunakan degree graph: alumni dengan koneksi paling banyak.
+8. Untuk similarity/rekomendasi/cluster, gunakan hasil Graph ML:
+   - `MIRIP_DENGAN.score` untuk similarity.
+   - `Alumni.clusterId` untuk cluster/komunitas.
 
 CONTOH:
 Q: Berapa banyak alumni dari ITB?
@@ -73,6 +106,31 @@ A: MATCH (a:Alumni {normalizedName: toLower('Budi Santoso')})-[:MIRIP_DENGAN]->(
 Q: Rekomendasikan alumni yang serupa dengan alumni ITB yang bekerja sebagai politisi
 A: MATCH (a:Alumni)-[:LULUSAN_DARI]->(u:University {normalizedName: toLower('Institut Teknologi Bandung')}), (a)-[:MIRIP_DENGAN]->(other:Alumni) RETURN DISTINCT other.name AS rekomendasi LIMIT 25
 
+Q: Berikan salah satu alumni yang memiliki pengaruh besar dan siapa alumni yang paling mirip dengannya
+A: MATCH (a:Alumni)-[rel]-()
+WITH a, count(rel) AS degree
+ORDER BY degree DESC
+LIMIT 1
+MATCH (a)-[r:MIRIP_DENGAN]-(other:Alumni)
+RETURN a.name AS alumni_berpengaruh,
+       degree,
+       other.name AS alumni_paling_mirip,
+       r.score AS similarity_score
+ORDER BY similarity_score DESC
+LIMIT 25
+
+Q: Alumni berpengaruh itu masuk cluster apa dan mirip dengan siapa?
+A: MATCH (a:Alumni)-[rel]-()
+WITH a, count(rel) AS degree
+ORDER BY degree DESC
+LIMIT 1
+MATCH (a)-[r:MIRIP_DENGAN]-(other:Alumni)
+RETURN a.name AS alumni_berpengaruh,
+       a.clusterId AS cluster,
+       other.name AS alumni_paling_mirip,
+       r.score AS similarity_score
+ORDER BY similarity_score DESC
+LIMIT 25
 """
 
 
@@ -142,9 +200,18 @@ class TextToCypher:
             lines.append(f"{prefix} {message['content']}")
         return "History:\n" + "\n".join(lines) + "\n\n"
 
+    def _deterministic_queries(self, question: str) -> list[str]:
+        if GENERIC_SIMILARITY_PATTERN.search(question):
+            return split_cypher_queries(GENERIC_SIMILARITY_QUERY)
+        return []
+
     def generate(self, question: str, history: list[dict[str, str]] | None = None) -> list[str]:
         question_text = self._rewrite_aliases(question)
         question_text = self._fuzzy_correct_universities(question_text)
+        deterministic_queries = self._deterministic_queries(question_text)
+        if deterministic_queries:
+            return deterministic_queries
+
         prompt = self._build_history_text(history) + f"Pertanyaan: {question_text}"
         response = self.llm.chat(
             [
@@ -168,6 +235,9 @@ class TextToCypher:
     def ask(self, question: str, history: list[dict[str, str]] | None = None) -> dict[str, Any]:
         if self.db is None:
             raise ValueError("Neo4jConnection belum diberikan.")
+        from src.graph_ml_orchestrator import GraphMLOrchestrator
+
+        GraphMLOrchestrator(self.db).ensure_ml_ready(question)
         queries = self.generate(question, history=history)
         results: list[dict[str, Any]] = []
         for query in queries:

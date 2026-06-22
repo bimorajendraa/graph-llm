@@ -14,9 +14,15 @@ WRITE_KEYWORDS = {
     "LOAD",
     "CALL DBMS",
     "CALL APOC",
+    "MUTATE",
 }
 
 ALLOWED_PREFIXES = ("MATCH", "WITH", "RETURN", "CALL DB.", "CALL GDS.")
+
+BLOCKED_CALL_PATTERNS = [
+    re.compile(r"\bCALL\s+GDS\.[A-Z0-9_.]*\.(?:WRITE|MUTATE)\b", re.IGNORECASE),
+    re.compile(r"\bCALL\s+GDS\.GRAPH\.(?:DROP|PROJECT|CREATE|DELETE|REMOVE)\b", re.IGNORECASE),
+]
 
 
 def strip_code_fences(text: str) -> str:
@@ -45,6 +51,10 @@ def validate_read_only_cypher(query: str) -> str:
 
     if not upper.startswith(ALLOWED_PREFIXES):
         raise ValueError("Query harus berupa query baca, misalnya MATCH ... RETURN ...")
+
+    for pattern in BLOCKED_CALL_PATTERNS:
+        if pattern.search(normalized):
+            raise ValueError("Query Graph ML write/mutate/drop tidak boleh dijalankan dari LLM.")
 
     if " RETURN " not in upper and not upper.startswith("RETURN "):
         raise ValueError("Query harus memiliki RETURN clause.")

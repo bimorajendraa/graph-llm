@@ -5,6 +5,18 @@ from typing import Any
 from src.database import Neo4jConnection
 
 
+BASE_RELATIONSHIP_TYPES = [
+    "LULUSAN_DARI",
+    "BEKERJA_SEBAGAI",
+    "BEKERJA_DI",
+    "MENJABAT_SEBAGAI",
+]
+SIMILARITY_RELATIONSHIP_TYPES = [
+    "MIRIP_DENGAN",
+]
+NODE_LABELS = ["Alumni", "University", "Occupation", "Employer", "Position"]
+
+
 class GraphAnalytics:
     def __init__(self, db: Neo4jConnection) -> None:
         self.db = db
@@ -42,7 +54,54 @@ class GraphAnalytics:
             {"limit": limit},
         )
 
-    def create_gds_projection(self, graph_name: str = "alumniGraph") -> list[dict[str, Any]]:
+    def available_relationship_types(self) -> set[str]:
+        rows = self.db.run_query(
+            """
+            MATCH ()-[r]->()
+            RETURN collect(DISTINCT type(r)) AS relationshipTypes
+            """
+        )
+        if not rows:
+            return set()
+        return set(rows[0].get("relationshipTypes") or [])
+
+    def create_gds_projection(
+        self,
+        graph_name: str = "alumniGraph",
+        include_embeddings: bool = False,
+        include_similarity: bool = False,
+    ) -> list[dict[str, Any]]:
+        existing_relationships = self.available_relationship_types()
+        base_relationships = [
+            relationship for relationship in BASE_RELATIONSHIP_TYPES if relationship in existing_relationships
+        ]
+
+        if not base_relationships:
+            raise RuntimeError(
+                "Graph Neo4j belum memiliki relationship hasil import. "
+                "Jalankan ulang import graph terlebih dahulu: "
+                "python -m src.graph_builder --processed-dir data/processed"
+            )
+
+        relationship_types = [
+            *base_relationships,
+            *[
+                relationship
+                for relationship in SIMILARITY_RELATIONSHIP_TYPES
+                if include_similarity and relationship in existing_relationships
+            ],
+        ]
+        relationship_projection = {
+            relationship: {"orientation": "UNDIRECTED"}
+            for relationship in relationship_types
+        }
+        node_projection: list[str] | dict[str, dict[str, Any]]
+        if include_embeddings:
+            node_projection = {label: {} for label in NODE_LABELS}
+            node_projection["Alumni"] = {"properties": ["embedding"]}
+        else:
+            node_projection = NODE_LABELS
+
         self.db.run_query(
             """
             CALL gds.graph.drop($graphName, false)
@@ -55,19 +114,18 @@ class GraphAnalytics:
             """
             CALL gds.graph.project(
               $graphName,
-              ['Alumni', 'University', 'Occupation', 'Employer', 'Position'],
-              {
-                LULUSAN_DARI: {orientation: 'UNDIRECTED'},
-                BEKERJA_SEBAGAI: {orientation: 'UNDIRECTED'},
-                BEKERJA_DI: {orientation: 'UNDIRECTED'},
-                MENJABAT_SEBAGAI: {orientation: 'UNDIRECTED'},
-                MIRIP_DENGAN: {orientation: 'UNDIRECTED'}
-              }
+              $nodeProjection,
+              $relationshipProjection
             )
             YIELD graphName, nodeCount, relationshipCount
-            RETURN graphName, nodeCount, relationshipCount
+            RETURN graphName, nodeCount, relationshipCount, $relationshipTypes AS relationshipTypes
             """,
-            {"graphName": graph_name},
+            {
+                "graphName": graph_name,
+                "nodeProjection": node_projection,
+                "relationshipProjection": relationship_projection,
+                "relationshipTypes": relationship_types,
+            },
         )
 
     def page_rank(self, graph_name: str = "alumniGraph", limit: int = 20) -> list[dict[str, Any]]:

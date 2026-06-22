@@ -35,12 +35,12 @@ class GraphMachineLearning:
     def write_knn_similarity(self, graph_name: str = "alumniGraph", top_k: int = 5) -> list[dict[str, Any]]:
         return self.db.run_query(
             """
-            CALL gds.knn.write($graphName, {
+            CALL gds.nodeSimilarity.write($graphName, {
               nodeLabels: ['Alumni'],
-              nodeProperties: ['embedding'],
-              topK: $topK,
               writeRelationshipType: 'MIRIP_DENGAN',
-              writeProperty: 'score'
+              writeProperty: 'score',
+              topK: $topK,
+              similarityCutoff: 0.0001
             })
             YIELD nodesCompared, relationshipsWritten
             RETURN nodesCompared, relationshipsWritten

@@ -53,6 +53,7 @@ INSTRUKSI WAJIB:
 4. Jika pertanyaan memerlukan multiple queries, pisahkan dengan "---" (tiga dash).
 5. Jawab HANYA dengan query Cypher, tanpa penjelasan atau markdown.
 6. Konversi alias universitas ke nama lengkap.
+7. JANGAN PERNAH mendeklarasikan nilai filter properti langsung di dalam kurung kurawal relasi seperti `-[r:MIRIP_DENGAN {score: s}]->`. Selalu deklarasikan filter skor di dalam klausa WHERE menggunakan variabel relasi seperti `WHERE r.score > 0`.
 
 CONTOH:
 Q: Berapa banyak alumni dari ITB?
@@ -63,7 +64,7 @@ A: MATCH (a:Alumni)-[:LULUSAN_DARI]->(u:University {normalizedName: toLower('Ins
 
 Q: Berapa alumni dari ITB dan siapa saja?
 A: MATCH (a:Alumni)-[:LULUSAN_DARI]->(u:University {normalizedName: toLower('Institut Teknologi Bandung')}) RETURN count(a) AS total LIMIT 25
----
+
 MATCH (a:Alumni)-[:LULUSAN_DARI]->(u:University {normalizedName: toLower('Institut Teknologi Bandung')}) RETURN a.name LIMIT 25
 
 Q: Siapa alumni yang mirip dengan Budi Santoso?
@@ -71,6 +72,7 @@ A: MATCH (a:Alumni {normalizedName: toLower('Budi Santoso')})-[:MIRIP_DENGAN]->(
 
 Q: Rekomendasikan alumni yang serupa dengan alumni ITB yang bekerja sebagai politisi
 A: MATCH (a:Alumni)-[:LULUSAN_DARI]->(u:University {normalizedName: toLower('Institut Teknologi Bandung')}), (a)-[:MIRIP_DENGAN]->(other:Alumni) RETURN DISTINCT other.name AS rekomendasi LIMIT 25
+
 """
 
 

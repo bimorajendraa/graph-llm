@@ -21,6 +21,8 @@ Jawab pertanyaan pengguna dalam bahasa Indonesia berdasarkan data retrieval grap
 Jika data tidak cukup, katakan keterbatasannya dengan jelas.
 Tampilkan jawaban ringkas, faktual, dan tidak mengarang data di luar konteks.
 Jika ada lebih dari satu query, gabungkan hasilnya menjadi satu jawaban yang jelas.
+Jangan tampilkan proses berpikir, analisis internal, atau reasoning langkah demi langkah.
+Langsung berikan jawaban akhir berbasis data.
 """
 
 # Catatan: prompt ini TIDAK berisi daftar kapabilitas yang di-hardcode.

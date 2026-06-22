@@ -111,6 +111,30 @@ Fungsinya:
 
 Dengan kata lain, bagian ML dipakai agar sistem tidak hanya menyimpan data, tetapi juga bisa menemukan pola komunitas dan kemiripan antar-alumni.
 
+### Auto Graph ML pada mode RAG/Cypher
+
+Tahap ini dibantu oleh `src/graph_ml_orchestrator.py`.
+
+Saat user bertanya di mode `rag` atau `cypher` tentang kemiripan, rekomendasi,
+cluster, komunitas, similarity, atau alumni yang paling berpengaruh, sistem
+otomatis mengecek apakah hasil Graph ML sudah tersedia di Neo4j:
+
+- property `embedding` pada sebagian node `Alumni`,
+- property `clusterId` pada sebagian node `Alumni`,
+- relationship `MIRIP_DENGAN` antar alumni.
+
+Jika belum tersedia atau belum lengkap, Python orchestration akan menjalankan
+pipeline Graph ML:
+
+1. Membuat ulang GDS projection dengan `GraphAnalytics.create_gds_projection()`.
+2. Menjalankan Louvain untuk menulis `clusterId`.
+3. Menjalankan FastRP untuk menulis `embedding`.
+4. Menjalankan KNN untuk membuat relationship `MIRIP_DENGAN`.
+
+Query write seperti `CALL gds.knn.write`, `CALL gds.*.mutate`, dan
+`CALL gds.graph.drop` tidak boleh dibuat oleh LLM. Query seperti itu hanya
+dijalankan dari Python orchestrator. Text-to-Cypher tetap read-only.
+
 ### 6. Text-to-Cypher
 
 Tahap ini dilakukan oleh `src/text_to_cypher.py` dan diamankan oleh `src/cypher_guard.py`.
@@ -217,6 +241,7 @@ graph-llm/
 |   |-- graph_analytics.py
 |   |-- graph_builder.py
 |   |-- graph_ml.py
+|   |-- graph_ml_orchestrator.py
 |   |-- graph_rag.py
 |   |-- llm_client.py
 |   |-- logger.py

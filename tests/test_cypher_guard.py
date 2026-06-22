@@ -90,6 +90,19 @@ class TestValidateReadOnlyCypher:
         query = "CALL gds.louvain.stream('alumniGraph') YIELD nodeId RETURN nodeId LIMIT 25"
         assert validate_read_only_cypher(query) == query
 
+    @pytest.mark.parametrize(
+        "query",
+        [
+            "CALL gds.knn.write('alumniGraph', {}) YIELD relationshipsWritten RETURN relationshipsWritten LIMIT 25",
+            "CALL gds.louvain.mutate('alumniGraph', {}) YIELD communityCount RETURN communityCount LIMIT 25",
+            "CALL gds.graph.drop('alumniGraph') YIELD graphName RETURN graphName LIMIT 25",
+            "CALL gds.graph.project('alumniGraph', ['Alumni'], '*') YIELD graphName RETURN graphName LIMIT 25",
+        ],
+    )
+    def test_gds_write_mutate_and_graph_management_are_rejected(self, query: str) -> None:
+        with pytest.raises(ValueError, match="Graph ML"):
+            validate_read_only_cypher(query)
+
     def test_code_fence_is_stripped_before_validation(self) -> None:
         query = "```cypher\nMATCH (a:Alumni) RETURN a.name LIMIT 5\n```"
         result = validate_read_only_cypher(query)

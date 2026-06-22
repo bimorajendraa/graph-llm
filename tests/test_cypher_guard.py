@@ -75,12 +75,24 @@ class TestValidateReadOnlyCypher:
         result = validate_read_only_cypher(query)
         assert not result.endswith(";")
 
-    def test_limit_before_return_raises(self) -> None:
-        # Pathological case where LIMIT keyword appears (e.g. inside an
-        # earlier clause) before the RETURN clause itself.
+    def test_limit_before_return_is_allowed_and_final_limit_is_appended(self) -> None:
         query = "MATCH (a:Alumni) WITH a LIMIT 5 RETURN a.name"
-        with pytest.raises(ValueError, match="SETELAH"):
-            validate_read_only_cypher(query)
+        result = validate_read_only_cypher(query)
+        assert result == "MATCH (a:Alumni) WITH a LIMIT 5 RETURN a.name LIMIT 25"
+
+    def test_multistage_similarity_query_with_final_limit_passes(self) -> None:
+        query = (
+            "MATCH (a:Alumni)-[rel]-() "
+            "WITH a, count(rel) AS degree "
+            "ORDER BY degree DESC "
+            "LIMIT 1 "
+            "MATCH (a)-[r:MIRIP_DENGAN]-(other:Alumni) "
+            "RETURN a.name AS alumni_berpengaruh, degree, other.name AS alumni_paling_mirip, "
+            "r.score AS similarity_score "
+            "ORDER BY similarity_score DESC "
+            "LIMIT 25"
+        )
+        assert validate_read_only_cypher(query) == query
 
     def test_call_db_prefix_is_allowed(self) -> None:
         query = "CALL db.labels() YIELD label RETURN label LIMIT 25"

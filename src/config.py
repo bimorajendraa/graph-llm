@@ -43,5 +43,8 @@ class Settings:
     openrouter_model: str = os.getenv("OPENROUTER_MODEL", "nex-agi/nex-n2-pro:free")
     openrouter_base_url: str = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
 
+    llm_cache_enabled: bool = os.getenv("LLM_CACHE_ENABLED", "true").strip().lower() not in {"0", "false", "no"}
+    llm_cache_dir: Path = PROJECT_ROOT / ".cache" / "llm"
+
 
 settings = Settings()

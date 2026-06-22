@@ -179,3 +179,67 @@ atau dipetakan dari dataset aktual.
 
 Tahap berikutnya baru boleh dibuat setelah `docs/dataset_analysis.md`
 menjelaskan struktur dataset dan mapping kolom ke schema target.
+
+## Troubleshooting
+
+### Jawaban selalu kosong / "Data retrieval tidak ada hasil"
+
+Penyebab paling umum: database Neo4j kosong, biasanya setelah container
+atau volume Docker direset (mis. `docker compose down -v`, container baru,
+atau pertama kali setup). Tanda di log: warning seperti
+`label does not exist: Alumni` atau `relationship type does not exist:
+LULUSAN_DARI`.
+
+**Solusi**, jalankan ulang import setelah Neo4j aktif:
+
+```powershell
+docker compose up -d
+python -m src.graph_builder --processed-dir data/processed
+```
+
+Mode `--mode rag` sekarang otomatis memberi peringatan di awal sesi chat
+jika node `Alumni` masih nol, jadi masalah ini akan terlihat segera tanpa
+perlu menunggu jawaban kosong berulang kali.
+
+### `Error Graph-RAG: 'choices'`
+
+Ini terjadi saat OpenRouter mengembalikan HTTP 200 tapi body response
+berisi `{"error": {...}}` alih-alih `{"choices": [...]}`, biasanya saat
+provider upstream model gratis sedang overload. `src/llm_client.py` sudah
+menangani kondisi ini secara eksplisit dan akan menampilkan pesan error
+yang jelas, bukan crash. Coba ulangi pertanyaan, atau ganti
+`OPENROUTER_MODEL` di `.env`.
+
+### `Error: Query harus memiliki RETURN clause.`
+
+Terjadi saat LLM tidak mengembalikan Cypher yang valid, biasanya untuk
+pertanyaan chit-chat atau di luar scope data alumni (mis. "Apa yang bisa
+kita lakukan di sini?"). `GraphRAG.answer()` sekarang menangani kondisi
+ini secara otomatis dan memberi jawaban yang membantu daripada
+menampilkan error mentah.
+
+### `429 Rate limit exceeded: free-models-per-day`
+
+Kuota harian model gratis OpenRouter sudah habis (umumnya terbatas dan
+diprioritaskan lebih rendah dibanding request berbayar). Solusi:
+
+- Tunggu reset kuota harian, atau
+- Tambahkan kredit di akun OpenRouter dan ganti `OPENROUTER_MODEL` ke
+  model berbayar (lihat harga terkini di openrouter.ai/models), atau
+- Aktifkan cache LLM (`LLM_CACHE_ENABLED=true`, default aktif) supaya
+  pertanyaan yang identik tidak memanggil API lagi.
+
+### Respons terasa lambat
+
+Setiap pertanyaan di `--mode rag` bisa memicu hingga 3 pemanggilan LLM
+berurutan: rewrite pertanyaan follow-up, generate Cypher, dan generate
+jawaban akhir. Beberapa hal yang membantu:
+
+- Cache LLM aktif secara default (`src/cache_manager.py` via
+  `src/llm_client.py`) sehingga pertanyaan yang identik tidak memanggil
+  API lagi.
+- `src/query_rewriter.py` sekarang skip pemanggilan LLM untuk pertanyaan
+  yang terlihat berdiri sendiri (bukan follow-up vague seperti
+  "Lainnya?" atau "Kalau dari UGM?").
+- Model gratis (`:free`) cenderung lebih lambat karena prioritas
+  routing lebih rendah dibanding model berbayar.

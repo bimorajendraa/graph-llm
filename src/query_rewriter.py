@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from src.llm_client import OpenRouterClient, build_system_message, build_user_message
@@ -37,6 +38,17 @@ Aturan:
 4. Jawab HANYA dengan pertanyaan yang telah ditulis ulang, tanpa penjelasan.
 """
 
+# Kata/frasa yang biasanya menandakan pertanyaan adalah follow-up vague yang
+# butuh konteks dari history untuk dipahami (mis. "Lainnya?", "Kalau dari
+# universitas lain?", "Bagaimana dengan UGM?"). Jika tidak ada satupun
+# penanda ini DAN pertanyaan cukup panjang untuk berdiri sendiri, kita
+# anggap pertanyaan sudah eksplisit dan skip panggilan LLM untuk rewrite.
+FOLLOWUP_HINT_PATTERN = re.compile(
+    r"\b(itu|ini|lainnya|lain|tadi|mereka|tersebut|kalau|gimana|bagaimana)\b",
+    re.IGNORECASE,
+)
+MIN_STANDALONE_WORD_COUNT = 4
+
 
 class QueryRewriter:
     def __init__(self, llm: OpenRouterClient | None = None) -> None:
@@ -51,9 +63,20 @@ class QueryRewriter:
             lines.append(f"{prefix} {message['content']}")
         return "History:\n" + "\n".join(lines)
 
+    def _looks_like_followup(self, question: str) -> bool:
+        normalized = question.strip()
+        word_count = len(normalized.split())
+        if word_count < MIN_STANDALONE_WORD_COUNT:
+            return True
+        return bool(FOLLOWUP_HINT_PATTERN.search(normalized))
+
     def rewrite(self, question: str, history: list[dict[str, str]] | None = None) -> str:
         if not history or len(history) < 2:
             logger.debug(f"No history, returning question as-is: {question}")
+            return question
+
+        if not self._looks_like_followup(question):
+            logger.debug(f"Pertanyaan terlihat berdiri sendiri, skip rewrite LLM call: {question}")
             return question
 
         history_text = self._build_history_context(history)

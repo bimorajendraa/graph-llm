@@ -264,6 +264,64 @@ def upsert_extracted_biography(
     return alumni_id
 
 
+def run_ml_pipeline(db: Neo4jConnection, graph_name: str = "alumniGraph") -> None:
+    """Run the full Graph ML pipeline after import.
+    Skips gracefully if Neo4j GDS plugin is not installed.
+    Steps: project graph → FastRP embeddings → Louvain clusters → KNN similarity.
+    """
+    from src.graph_ml import GraphMachineLearning
+
+    ml = GraphMachineLearning(db)
+
+    # Check GDS is available before proceeding
+    try:
+        db.run_query("CALL gds.list() YIELD procName RETURN procName LIMIT 1")
+    except Exception:
+        logger.warning(
+            "Neo4j GDS plugin tidak tersedia — ML pipeline dilewati. "
+            "Install GDS plugin agar fitur MIRIP_DENGAN (similar alumni) aktif."
+        )
+        return
+
+    logger.info("Memulai Graph ML pipeline...")
+
+    # Drop existing projection if it exists, then re-project
+    try:
+        db.run_query("CALL gds.graph.drop($name, false)", {"name": graph_name})
+    except Exception:
+        pass
+
+    try:
+        db.run_query(
+            """
+            CALL gds.graph.project($name,
+              ['Alumni','University','Occupation','Employer','Position'],
+              ['LULUSAN_DARI','BEKERJA_SEBAGAI','BEKERJA_DI','MENJABAT_SEBAGAI']
+            )
+            """,
+            {"name": graph_name},
+        )
+        logger.info("Graph projected: %s", graph_name)
+
+        result = ml.write_fast_rp_embeddings(graph_name=graph_name)
+        logger.info("FastRP embeddings written: %s", result)
+
+        result = ml.write_louvain_clusters(graph_name=graph_name)
+        logger.info("Louvain clusters written: %s", result)
+
+        result = ml.write_knn_similarity(graph_name=graph_name)
+        logger.info("KNN MIRIP_DENGAN relationships written: %s", result)
+
+        logger.info("Graph ML pipeline selesai. Fitur 'mirip' siap digunakan.")
+    except Exception as exc:
+        logger.warning("Graph ML pipeline gagal: %s — lanjut tanpa ML.", exc)
+    finally:
+        try:
+            db.run_query("CALL gds.graph.drop($name, false)", {"name": graph_name})
+        except Exception:
+            pass
+
+
 def import_graph(processed_dir: str | Path = settings.processed_data_dir, batch_size: int = 500) -> None:
     db = Neo4jConnection()
     try:
@@ -272,6 +330,7 @@ def import_graph(processed_dir: str | Path = settings.processed_data_dir, batch_
         import_nodes(db, processed_dir=processed_dir, batch_size=batch_size)
         import_relationships(db, processed_dir=processed_dir, batch_size=batch_size)
         logger.info("Graph counts: %s", count_graph(db))
+        run_ml_pipeline(db)
     finally:
         db.close()
 
@@ -280,6 +339,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Import CSV hasil preprocessing ke Neo4j.")
     parser.add_argument("--processed-dir", default=str(settings.processed_data_dir))
     parser.add_argument("--batch-size", type=int, default=500)
+    parser.add_argument("--skip-ml", action="store_true", help="Lewati Graph ML pipeline setelah import.")
     args = parser.parse_args()
     import_graph(processed_dir=args.processed_dir, batch_size=args.batch_size)
 

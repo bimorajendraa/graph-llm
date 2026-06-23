@@ -216,16 +216,6 @@ graph-llm/
 |   |-- raw/
 |   |-- processed/
 |   `-- biographies/
-|-- notebooks/
-|   |-- 00_dataset_inspection.ipynb
-|   |-- 01_database_connection.ipynb
-|   |-- 02_data_preprocessing.ipynb
-|   |-- 03_import_to_neo4j.ipynb
-|   |-- 04_llm_graph_builder.ipynb
-|   |-- 05_graph_analytics.ipynb
-|   |-- 06_graph_machine_learning.ipynb
-|   |-- 07_text_to_cypher.ipynb
-|   `-- 08_graph_rag_demo.ipynb
 |-- src/
 |   |-- __init__.py
 |   |-- answer_formatter.py
@@ -263,13 +253,9 @@ Folder `.cache/` dapat terbentuk otomatis saat chat berjalan karena sistem menyi
 
 ## Notebook dan Python Script
 
-Repository ini menyediakan dua bentuk eksekusi:
+Repository ini menyediakan eksekusi:
 
-1. **Notebook (`.ipynb`)**
-
-   Notebook digunakan untuk menjalankan pipeline secara bertahap, eksploratif, dan mudah dipresentasikan. Notebook cocok untuk melihat output per tahap, menjelaskan proses, dan melakukan demonstrasi.
-
-2. **Python module (`.py`)**
+**Python module (`.py`)**
 
    File Python di folder `src/` adalah versi terstruktur dan reusable dari pipeline. File ini bisa dijalankan langsung lewat terminal menggunakan perintah `python -m ...`.
 
@@ -408,12 +394,6 @@ Output laporan akan tersimpan di:
 docs/dataset_analysis.md
 ```
 
-Notebook terkait:
-
-```text
-notebooks/00_dataset_inspection.ipynb
-```
-
 ---
 
 ### 2. Preprocessing Dataset
@@ -432,12 +412,6 @@ Jika ingin menentukan file CSV tertentu:
 python -m src.data_loader --raw-dir data/raw --file-name normalized_alumni_dataset.csv --output-dir data/processed
 ```
 
-Notebook terkait:
-
-```text
-notebooks/02_data_preprocessing.ipynb
-```
-
 ---
 
 ### 3. Import Graph ke Neo4j
@@ -452,12 +426,6 @@ Lalu jalankan import:
 
 ```powershell
 python -m src.graph_builder --processed-dir data/processed
-```
-
-Notebook terkait:
-
-```text
-notebooks/03_import_to_neo4j.ipynb
 ```
 
 ---
@@ -522,26 +490,6 @@ quit
 keluar
 q
 ```
-
----
-
-## Urutan Notebook
-
-Jalankan notebook sesuai nomor:
-
-1. `00_dataset_inspection.ipynb`
-2. `01_database_connection.ipynb`
-3. `02_data_preprocessing.ipynb`
-4. `03_import_to_neo4j.ipynb`
-5. `04_llm_graph_builder.ipynb`
-6. `05_graph_analytics.ipynb`
-7. `06_graph_machine_learning.ipynb`
-8. `07_text_to_cypher.ipynb`
-9. `08_graph_rag_demo.ipynb`
-
-Urutan ini mengikuti pipeline dari dataset mentah sampai demo Graph-RAG.
-
----
 
 ## Arsitektur Sistem
 
@@ -711,13 +659,6 @@ dapat dipahami berdasarkan konteks pertanyaan sebelumnya.
 ---
 
 ## Menjalankan Graph Analytics dan Graph ML
-
-Graph analytics dan graph ML umumnya dijalankan melalui notebook:
-
-```text
-notebooks/05_graph_analytics.ipynb
-notebooks/06_graph_machine_learning.ipynb
-```
 
 Namun fungsi Python-nya juga tersedia di:
 

@@ -854,16 +854,20 @@ Pastikan urutan berikut sudah dilakukan:
 
 ---
 
-## Catatan Penting
+## Catatan 
 
-- Jangan membuat properti graph atau relationship baru sebelum kolom tersebut benar-benar ditemukan atau dipetakan dari dataset aktual.
-- Tahap inspeksi dataset tetap menjadi dasar sebelum membuat schema final.
-- Relationship `MIRIP_DENGAN` dibuat dari hasil Graph ML, bukan dari CSV mentah.
-- Mode Text-to-Cypher dan Graph-RAG membutuhkan OpenRouter API key.
-- Mode Cypher dan RAG membutuhkan Neo4j yang sudah berisi data hasil import.
-- Notebook digunakan untuk demonstrasi dan eksperimen, sedangkan file `.py` digunakan untuk eksekusi terstruktur.
+# Model Bantuan Pengembangan
 
----
+Selain model runtime aplikasi, AI juga digunakan sebagai alat bantu dalam proses pengembangan, debugging, dan dokumentasi proyek. Bantuan AI digunakan untuk:
+
+1. Menyusun struktur README.
+2. Menjelaskan arsitektur sistem.
+3. Membantu menyusun pipeline Text-to-Cypher, Graph-RAG, dan LLM Graph Builder.
+4. Membantu membuat dokumentasi instalasi, konfigurasi, cara run, arsitektur, logika Cypher, pipeline AI, analisis, dan kesimpulan.
+5. Membantu mengevaluasi kesesuaian proyek dengan Tier 4.
+
+Model bantuan pengembangan yang digunakan:
+ChatGPT GPT-5.5 Thinking
 
 ## Lisensi
 

@@ -870,7 +870,7 @@ Model bantuan pengembangan yang digunakan:
 - ChatGPT GPT-5.5 Thinking
 - Claude Sonnet 4.6
 
-###Modifikasi Manual yang Dilakukan
+### Modifikasi Manual yang Dilakukan
 
 Walaupun AI digunakan sebagai alat bantu, beberapa bagian tetap diperiksa dan dimodifikasi secara manual agar sesuai dengan dataset, struktur kode, dan kebutuhan proyek.
 
@@ -893,7 +893,7 @@ Modifikasi manual yang dilakukan meliputi:
 15. Menambahkan orchestrator agar Graph ML dapat dijalankan otomatis ketika user bertanya tentang similarity, cluster, rekomendasi, komunitas, atau alumni berpengaruh.
 16. Memastikan query write dari GDS tidak dibuat langsung oleh LLM, tetapi dijalankan melalui Python orchestrator.
 17. Menyesuaikan README agar tidak mengklaim fitur yang tidak ada di kode.
-18. Menambahkan penjelasan bahwa Tier 4 dipenuhi melalui Text-to-Cypher, LLM Graph Builder, dan Graph-RAG.
+18. Memastikan kebutuhan keseluruhan dipenuhi dengan adanya Text-to-Cypher, LLM Graph Builder, dan Graph-RAG.
 19. Menyesuaikan project dan menambahkan catatan bahwa MCP tidak digunakan, karena pada proyek ini menggunakan Graph-RAG.
 
 ## Lisensi

@@ -856,7 +856,7 @@ Pastikan urutan berikut sudah dilakukan:
 
 ## Catatan 
 
-# Model Bantuan Pengembangan
+### Model Bantuan Pengembangan
 
 Selain model runtime aplikasi, AI juga digunakan sebagai alat bantu dalam proses pengembangan, debugging, dan dokumentasi proyek. Bantuan AI digunakan untuk:
 
@@ -867,7 +867,34 @@ Selain model runtime aplikasi, AI juga digunakan sebagai alat bantu dalam proses
 5. Membantu mengevaluasi kesesuaian proyek dengan Tier 4.
 
 Model bantuan pengembangan yang digunakan:
-ChatGPT GPT-5.5 Thinking
+- ChatGPT GPT-5.5 Thinking
+- Claude Sonnet 4.6
+
+###Modifikasi Manual yang Dilakukan
+
+Walaupun AI digunakan sebagai alat bantu, beberapa bagian tetap diperiksa dan dimodifikasi secara manual agar sesuai dengan dataset, struktur kode, dan kebutuhan proyek.
+
+Modifikasi manual yang dilakukan meliputi:
+
+1. Menyesuaikan schema graph dengan kolom dataset aktual, yaitu alumniLabel, univLabel, occupationLabel, employerLabel, positionLabel.
+2. Menentukan node utama: Alumni, University, Occupation, Employer, dan Position.
+3. Menentukan relationship utama: LULUSAN_DARI, BEKERJA_SEBAGAI, BEKERJA_DI, dan MENJABAT_SEBAGAI.
+4. Menambahkan constraint Neo4j agar node penting tidak duplikat.
+5. Menyesuaikan proses preprocessing agar menghasilkan file node dan relationship di data/processed.
+6. Memastikan import graph menggunakan MERGE agar proses import dapat dijalankan ulang tanpa membuat data ganda.
+7. Menambahkan alias universitas seperti ITB, ITS, UGM, UI, UNPAD, UNAIR, IPB, UNDIP, dan UNS agar pertanyaan natural language lebih mudah dipahami.
+8. Menambahkan validasi cypher_guard agar query dari LLM tetap read-only.
+9. Menyesuaikan otomsi hasil query dengan LIMIT 25 agar output tidak terlalu panjang.
+10. Menambahkan conversation memory agar pertanyaan lanjutan dapat dipahami.
+11. Menambahkan dan menyesuaikan Graph-RAG agar jawaban akhir dibuat berdasarkan hasil retrieval Neo4j.
+12. Menambahkan dan menyesuaikan LLM Graph Builder untuk ekstraksi entitas dari teks biodata alumni.
+13. Menambahkan penyesuaian Cypher Query untuk Graph ML yang menggunakan Louvain, FastRP, dan KNN Similarity.
+14. Menambahkan relationship MIRIP_DENGAN sebagai hasil similarity dari Graph ML.
+15. Menambahkan orchestrator agar Graph ML dapat dijalankan otomatis ketika user bertanya tentang similarity, cluster, rekomendasi, komunitas, atau alumni berpengaruh.
+16. Memastikan query write dari GDS tidak dibuat langsung oleh LLM, tetapi dijalankan melalui Python orchestrator.
+17. Menyesuaikan README agar tidak mengklaim fitur yang tidak ada di kode.
+18. Menambahkan penjelasan bahwa Tier 4 dipenuhi melalui Text-to-Cypher, LLM Graph Builder, dan Graph-RAG.
+19. Menyesuaikan project dan menambahkan catatan bahwa MCP tidak digunakan, karena pada proyek ini menggunakan Graph-RAG.
 
 ## Lisensi
 
